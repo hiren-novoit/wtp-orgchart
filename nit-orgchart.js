@@ -152,6 +152,41 @@ function NITOrgChart(options) {
 		}
 	}
 
+	function traverse(t, s, manager) {
+		// console.log(s.id, s.Manager);
+		// console.log(t.length);
+		if (typeof s.traversed === 'undefined') {
+			t.push(s);
+			if(s.subordinates) {
+				for(var subKey in s.subordinates){
+					traverse(t,s.subordinates[subKey], s)
+					// console.log(t.length);
+				}
+			}
+			s.traversed = true;
+		}
+	}
+
+	function getSubordinates(staff) {
+		staff.forEach((s) => {
+			// console.log(s.id, s.Manager);
+			if(Array.isArray(s.Managers)) {
+				s.Managers.forEach(m => {
+					var manager = staff.find(mObj => mObj.id === m.id);
+					if (typeof manager !== 'undefined') { 
+						// console.log('Manager found.')
+						if (typeof manager.subordinates === 'undefined') {
+							// console.log('Created sub o obj')
+							manager.subordinates = {};
+						}					
+						manager.subordinates[s.id] = s;
+						s.pushedIntoTree = true;
+					}
+				});
+			}
+		});
+	}
+
 	function orderStaff(staff, highestLevel) {
 		var gapFillers = [];
 
@@ -190,6 +225,7 @@ function NITOrgChart(options) {
 			}
 		}
 
+		// HG don't execute this code for administration function
 		// First move all staff who have no parent or children out of the way (no relationship groups to care about)
 		// Also anyone on the bottom level, don't put them in thier own trees - just group them with the rest
 		for (var i = staff.length - 1; i >= 0; i--) {
@@ -203,66 +239,15 @@ function NITOrgChart(options) {
 		var trees = [];
 		// HG Optimized code
 		// find & push staff in subordinates property of the manager
-		staff.forEach((s) => {
-			// console.log(s.id, s.Manager);
-			if(s.Manager !== -1) {
-				var manager = staff.find(m => s.Manager === m.id);
-				if (typeof manager !== 'undefined') { 
-					// console.log('Manager found.')
-					if (typeof manager.subordinates === 'undefined') {
-						// console.log('Created sub o obj')
-						manager.subordinates = {};
-					}					
-					manager.subordinates[s.id] = s;
-					s.pushedIntoTree = true;
-				}
-			}
-		});
+		getSubordinates(staff);
 		_.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
-		function traverse(t, s, manager) {
-			// console.log(s.id, s.Manager);
-			t.push(s);
-			// console.log(t.length);
-			if(s.subordinates) {
-				for(var subKey in s.subordinates){
-					traverse(t,s.subordinates[subKey], s)
-					// console.log(t.length);
-				}
-			}
-		}
+
 		var s;
 		for(s in staff) {
 			var t = [];
 			traverse(t, staff[s]);
 			trees.push(t);
 		}// end HG Optimized code
-
-		// end extract out all managers from staff array
-		// while (staff.length > 0) {
-		// 	for (var i = staff.length - 1; i >= 0; i--) {
-		// 		var curr = staff[i];
-		// 		if (curr.Manager == -1) {
-		// 			trees.push([curr]);
-		// 			staff.splice(i, 1);
-		// 			continue;
-		// 		}
-
-		// 		var treeIndex = -1;
-
-		// 		for (var x = 0; x < trees.length; x++) {
-		// 			for (var y = 0; y < trees[x].length; y++) {
-		// 				if (trees[x][y].id == curr.Manager) {
-		// 					treeIndex = x;
-		// 				}
-		// 			}
-		// 		}
-
-		// 		if (treeIndex != -1) {
-		// 			trees[treeIndex].push(curr);
-		// 			staff.splice(i, 1);
-		// 		}
-		// 	}
-		// }
 
 		// Keep track of the position of trees / free elements
 		var allStaff = [];
@@ -533,15 +518,49 @@ function NITOrgChart(options) {
 		}
 
 		var topOffset = 100;
-
+		// staff.sort((a, b) => { return (a.Level * 10 + a.SubLevel)-(b.Level * 10 + b.SubLevel); });
+		// var assistantCorrection = 0;
+		// var nextLevelAssistantCorrection = null;
+		// var currentSublevel;
+		// if (staff.length) {
+		// 	currentSublevel = staff[0].Level * 10 + staff[0].SubLevel;
+		// }
+		var assistantOffset = [];
+		var maxRows = MAXLEVELS * MAXSUBLEVELS;
+		for(i = 0; i < maxRows; i++) {
+			assistantOffset.push(0);
+		}
+		staff.forEach(s => {
+			if (s.Assistant) {
+				var i = s.Level * MAXLEVELS + s.SubLevel;
+				if (i < maxRows) {
+					i++;
+				}
+				assistantOffset[i] = 60;
+			}
+		});
+		assistantOffset.forEach( (ao, i) => {
+			if (i > 0) {
+				assistantOffset[i] += assistantOffset[i-1]
+			}
+		});
 		for (var i = 0; i < staff.length; i++) {
+			// if (currentSublevel < (staff[i].Level * 10 + staff[i].SubLevel)) {
+			// 	currentSublevel = staff[i].Level * 10 + staff[i].SubLevel;
+			// 	assistantCorrection = nextLevelAssistantCorrection;
+			// 	nextLevelAssistantCorrection = null;
+			// }
 			var curr = staff[i];
 
 			var x = 140 * curr.pos;
-			var y = topOffset + (200 * curr.Level) + (staff[i].SubLevelOffset * 140);
+			var y = topOffset + (200 * curr.Level) + (staff[i].SubLevelOffset * 140) + assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
+			// var y = topOffset + (200 * curr.Level) + (staff[i].SubLevelOffset * 140) + assistantCorrection;
 			if (curr.IsAssistant) {
 				y += 60;
 				x -= 10;
+				// if (nextLevelAssistantCorrection == null) {
+				// 	nextLevelAssistantCorrection = assistantCorrection + 60;
+				// }
 			}
 
 			var card = new Card(draw, curr, locationMappings);
@@ -601,7 +620,9 @@ function NITOrgChart(options) {
 	function initialiseChart(staffIn, buildOptions) {
 		var def = $.Deferred();
 		var staff = JSON.parse(JSON.stringify(staffIn)); // Deep copy - only json data
-
+		if (typeof buildOptions === 'undefined') {
+			buildOptions = {};
+		}
 		// Add levels to each staff based on role
 		var levelRoles = getLevels();
 		var locationMappings = getLocations();
@@ -616,10 +637,21 @@ function NITOrgChart(options) {
 	}
 
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
+		if (buildOptions.bestMatchSearch) {
+			if (buildOptions.showDirectReportsOnly) {
+				var bestMatch = staff.find(s => s.id === buildOptions.bestMatch.id);
+				getSubordinates(staff);
+				staff = [];
+				traverse(staff, bestMatch);
+			} else {
+				var bestMatches = staff.filter(s => s.Function == buildOptions.bestMatch.Function);
+			}
+		}
+
 		// Assign a level on each person based on the role
 		// HG: to assign levels more efficiently
 		staff.forEach(s => {
-			s.Level = -1;
+			s.Level = -2;
 			s.roleOrder = null;
 			if (s.Role) {
 				var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
@@ -633,98 +665,36 @@ function NITOrgChart(options) {
 				console.log('User ' + s.Name + ' does not have any role assigned.')
 			}
 
-			// find manager and assistant details
-			// if (s.Level === -1 || buildOptions.showDirectReports) {
-			// 	console.log(s);
-			// 	var sm = managers.filter(m => m['ocm_staffmember']['EMail'] === s.Email);
-			// 	console.log(sm);
-			// 	var sManagers = [];
-			// 	sm.forEach( sm => { 
-			// 		var manager = staff.find(m => sm['ocm_manager']['EMail'] === m.Email);
-			// 		if (manager) {
-			// 			sManagers.push(manager);
-			// 			s.Manager = manager.id;
-			// 			if (s.Level === -1) {
-			// 				manager.Assistant = jQuery.extend(true, {}, s);
-			// 			}
-			// 		}
-			// 	});
-			// 	if (sManagers.length && buildOptions.showDirectReports) {
-			// 		s.Managers = sManagers;
-			// 	}
-			// }
+			// Add assistants to managers
+			if (s.Level === -1) {
+				if (buildOptions.adminSearch) {
+					s.Level = 1;
+				} else {
+					if (Array.isArray(s.Managers)) {
+						s.Managers.forEach(mFrmA => {
+							var manager = staff.find(m => m.id == mFrmA.id);
+							manager.Assistant = jQuery.extend(true, {}, s);
+						});
+					}
+				}
+			}
 		});
+
+		if (buildOptions.bestMatchSearch && !(buildOptions.showDirectReportsOnly)) {
+			staff = bestMatches;
+		}
+		
 		//HG: Remove below line only for UAT
 		staff = staff.filter(s => s.roleOrder !== null)
-		// HG: end to assign levels more efficiently
-		// for (var i = 0; i < staff.length; i++) {
-		// 	var level = -1;
-
-		// 	if (staff[i].Role != null) {
-		// 		for (var x = 0; x < levelRoles.length; x++) {
-		// 			if (levelRoles[x].Title.toLowerCase().trim() == staff[i].Role.toLowerCase().trim()) {
-		// 				if (!isNaN(levelRoles[x].ocr_level)) {
-		// 					level = parseInt(levelRoles[x].ocr_level);
-		// 				}
-		// 				break;
-		// 			}
-		// 		}
-		// 	}
-		// 	staff[i].Level = level;
-		// }
 
 		staff = reverseLevels(staff);
 
-		// Add the assistant to each staff member
-		// HG: start Modified code
-		// staff.forEach(s => {
-		// 	if (s.Level === -1 && s.Manager !== -1) {
-		// 		var manager = staff.find(m => s.Manager === m.id);
-		// 		if (manager) {
-		// 			manager.Assistant = jQuery.extend(true, {}, s);
-		// 		}
-		// 	}
-		// 	if (s.Level > -1 && buildOptions.showDirectReports === false) { 
-		// 		s.Manager = -1; 
-		// 	}
-		// });
-
 		// HG: end Modified code
-		// for (var i = 0; i < staff.length; i++) {
-		// 	var assistant = null;
-		// 	if (staff[i].AssistantId != -1) {
-		// 		for (var x = 0; x < staff.length; x++) {
-		// 			if (staff[x].id == staff[i].AssistantId) {
-		// 				assistant = staff[x];
-		// 				break;
-		// 			}
-		// 		}
-		// 	}
-		// 	if (assistant == null) {
-		// 		staff[i].Assistant = null;
-		// 	} else {
-		// 		staff[i].Assistant = jQuery.extend(true, {}, assistant);
-		// 	}
-		// }
 
 		// Order all staff based on role
 		// HG: more efficient Code
 		staff.sort((a,b) => a.roleOrder - b.roleOrder);
 		// HG: end more efficient Code
-
-		// var roleOrder = [];
-		// for (var i = 0; i < levelRoles.length; i++) {
-		// 	var currLevel = levelRoles[i];
-
-		// 	for (var x = staff.length - 1; x >= 0; x--) {
-		// 		if (currLevel.Title.toLowerCase().trim() == staff[x].Role.toLowerCase().trim()) {
-		// 			roleOrder.push(staff[x]);
-		// 			staff.splice(x, 1);
-		// 		}
-		// 	}
-		// }
-
-		// staff = roleOrder.concat(staff);
 
 		// Separate out staff based on location
 		var locationStaff = {};
@@ -760,11 +730,14 @@ function NITOrgChart(options) {
 
 			// Normalise the edges (Make sure the minimum positioned element in the tree is 0, no more, no less)
 			var minOffset = null;
-			for (var i = 0; i < currStaff.length; i++) {
-				if (minOffset == null || currStaff[i].pos < minOffset) {
-					minOffset = currStaff[i].pos;
-				}
-			}
+			//HG below code is trying to find min position out of current staff array
+			minOffset = Math.min.apply(null, currStaff.map(cs => cs.pos));
+
+			// for (var i = 0; i < currStaff.length; i++) {
+			// 	if (minOffset == null || currStaff[i].pos < minOffset) {
+			// 		minOffset = currStaff[i].pos;
+			// 	}
+			// }
 
 			for (var i = 0; i < currStaff.length; i++) {
 				currStaff[i].pos += (highestPos - minOffset);
@@ -781,7 +754,12 @@ function NITOrgChart(options) {
 
 				for (var i = 0; i < currStaff.length; i++) {
 					if (currStaff[i].Level != lx) continue;
-					if (currStaff[i].SubLevel > currMaxSubLevel) currMaxSubLevel = currStaff[i].SubLevel;
+					if (currStaff[i].SubLevel > currMaxSubLevel){ 
+						currMaxSubLevel = currStaff[i].SubLevel;
+						// if (currStaff[i].Assistant) {
+						// 	currMaxSubLevel += 0.5;
+						// }
+					}
 
 					currStaff[i].SubLevelOffset = subLevelOffset + currStaff[i].SubLevel;
 				}

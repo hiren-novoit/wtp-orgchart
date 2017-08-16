@@ -83,24 +83,11 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 
     // Process dataset
     function processDataset(dataset) {
-        var id = 0;
-        var processedItems = [];
-
-        dataset.forEach(function (item) {
-			processedItems.push({
-				id: id++,
-				Manager: -1,
-				// id: item.adItem.id,
-				// Manager: item.adItem.Manager,
-				Name: item.adItem.Name,
-				Role: item.adItem.Role,
-				Email: item.adItem.Email,
-				Location: item.adItem.Location,
-				EncodedAbsUrl: item.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId
-			});
-        });
-
-        return processedItems;
+        return dataset.map( ds => { 
+			var item = ds.adItem;
+			item.EncodedAbsUrl = ds.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId;
+			return item;
+		});
     }
 
     // init SVG pan zoom

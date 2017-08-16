@@ -421,7 +421,7 @@ var MMStaffDirectory = function(options) {
                 
                 if (bestMatches.length) {
                     options.bestMatchSearch = true;
-                    options.bestMatch = bestMatches[0];
+                    options.bestMatch = bestMatches[0].item.adItem;
                     if (showDirectReportsOnly) {    
                         options.showDirectReportsOnly = true;                
                     }
