@@ -2033,8 +2033,14 @@ transition: all 0.3s ease;
 	width: 30px;
 }
 
+#mm_staffdirectory .menu-col:first-child {
+    width: 20%;
+	min-width: 20%;
+}
+
 #mm_staffdirectory .menu-col {
-    width: 100px;
+    width: 50%;
+	min-width: 50%;
 }
 
 .staff-directory {
@@ -2400,7 +2406,7 @@ input.search-button:active {
 	}
 
 	.people-result {
-		width: calc(50%  - 25px);
+		width: calc(95%  - 25px);
 	}
 
 }
