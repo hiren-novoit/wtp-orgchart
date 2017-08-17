@@ -629,17 +629,18 @@ function NITOrgChart(options) {
 		var managers = getManagers();
 
 		$.when(levelRoles, locationMappings, managers).then(function (levels, locations, managers) {
-			buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
-			def.resolve();
+			var bmCard = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
+			def.resolve(bmCard);
 		});
 
 		return def;
 	}
 
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
+		var bestMatch;
 		if (buildOptions.bestMatchSearch) {
-			if (buildOptions.showDirectReportsOnly) {
-				var bestMatch = staff.find(s => s.id === buildOptions.bestMatch.id);
+			bestMatch = staff.find(s => s.id === buildOptions.bestMatch.id);
+			if (buildOptions.showDirectReportsOnly) {				
 				getSubordinates(staff);
 				staff = [];
 				traverse(staff, bestMatch);
@@ -779,6 +780,11 @@ function NITOrgChart(options) {
 		}
 
 		renderChart(allStaff, locationMappings);
+
+		if (bestMatch) {
+			var bmCard = {x: bestMatch.Card.x, y: bestMatch.Card.y};
+			return bmCard;
+		}
 	}
 
 	self.initialiseChart = initialiseChart;

@@ -91,7 +91,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
     }
 
     // init SVG pan zoom
-    function initPanZoom() {
+    function initPanZoom(card) {
         // enable panning and zooming
 		svgPanZoomer = svgPanZoom('#OrgChart > svg', {
 			viewportSelector: '.svg-pan-zoom_viewport',
@@ -116,7 +116,12 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 		});
 
 		window._svgPanZoomer = svgPanZoomer;
-		window._svgPanZoomer.realzoom(0.5, {x:0, y:0}, true);
+		if (card) {
+			var panPoint = {x: -1 * card.x, y: -1 * card.y} ;
+			window._svgPanZoomer.realzoom(1, panPoint, true);
+		} else {
+			window._svgPanZoomer.realzoom(0.5, {x:0, y:0}, true);
+		}
     }
 
     // destroy SVG pan zoom
@@ -215,8 +220,8 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 			options = props.options;
 		}
 		// Initialise the org chart with the staff
-		self.orgChart.initialiseChart(dataset_processed, options).done(function() {
-			initPanZoom();
+		self.orgChart.initialiseChart(dataset_processed, options).done(function(bmCard) {
+			initPanZoom(bmCard);
 			def.resolve();
 		});
     }
