@@ -8,6 +8,7 @@ if (typeof(window.requestAnimationFrame) === 'undefined') {
 // Staff Directory in mega menu
 var MMStaffDirectory = function(options) {
     var self = this;
+    var timeout = null;
     self.target = null;
     self.lazyLoader = null;
     self.lazyLoaderError = false;
@@ -339,9 +340,13 @@ var MMStaffDirectory = function(options) {
 
     // Apply dropdown filters
     function applyDropdownFilters(results) {
+        var dropDownFilters = {};
+
         function applyFilter(items, propKey, selector, split) {
             // Get filter value from dropdown
             var val = $(selector).val().trim().toLowerCase();
+            var lbl = $(selector).parent().find('span.search-label').text().trim().replace(':', '');
+            dropDownFilters[lbl] = val;
             // Should split? Used for comma separated fields
             var shouldSplit = typeof(split) !== 'undefined';
 
@@ -373,7 +378,7 @@ var MMStaffDirectory = function(options) {
         results = applyFilter(results, 'search_skills', '.search-dd.skills', ', ');
         results = applyFilter(results, 'search_function', '.search-dd.functions', ', ');
 
-        return results;
+        return {results, dropDownFilters};
     }
 
     function fuseSearch(searchString) {
@@ -383,51 +388,65 @@ var MMStaffDirectory = function(options) {
 
 	function performDropdownSearch(e) {
 		var filtered = applyDropdownFilters(parsedDataCache);
-		initialiseFuse(filtered);
-		
-		performKeywordSearch();
+		initialiseFuse(filtered.results);
+        
+		performKeywordSearch(filtered.dropDownFilters);
 	}
 
-    function performKeywordSearch(e) {
-        requestAnimationFrame(function() {
-            var val = $('.search-input').val().trim();
-			var bestMatches = [];
+    var prevSearchString = '';
+    var prevBestMatch = {id: -1};
+    function keywordSearch(filterData) {
+        var trigerredByKeywordSearch = !!filterData.currentTarget;
+        var val = $('.search-input').val().trim();
+        var options = {
+            bestMatchSearch: false,
+            showDirectReportsOnly: false,
+            bestMatch: {id: -1}
+        }
+        if (!trigerredByKeywordSearch || (trigerredByKeywordSearch && val !== prevSearchString)) {
+            var bestMatches = [];
             var otherMatches = [];
-            var options = {
-                bestMatchSearch: false,
-                showDirectReportsOnly: false
-            }
 
             if (val.length <= 2) {
                 renderAll();
             }
             else {
                 // fuzzy search on the name and filters if we have dropdown filters AND searchbox
-				var fuseMatches = fuseSearch(val);
+                var fuseMatches = fuseSearch(val);
 
-				// Get best matches from fuse matches
-				bestMatches = getBestMatches(fuseMatches);
+                // Get best matches from fuse matches
+                bestMatches = getBestMatches(fuseMatches);
 
-				// Build other matches --- other matches = { fuseMatches } - { bestMatches }
-				for(var i = 0; i < fuseMatches.length; i++) {
-					if(bestMatches.indexOf(fuseMatches[i]) === -1) {
-						otherMatches.push(fuseMatches[i]);
-					}
-				}
+                // Build other matches --- other matches = { fuseMatches } - { bestMatches }
+                for(var i = 0; i < fuseMatches.length; i++) {
+                    if(bestMatches.indexOf(fuseMatches[i]) === -1) {
+                        otherMatches.push(fuseMatches[i]);
+                    }
+                }
 
                 // render results!
                 renderResults(bestMatches, otherMatches);
-                var showDirectReportsOnly = false;
-                
+
                 if (bestMatches.length) {
                     options.bestMatchSearch = true;
                     options.bestMatch = bestMatches[0].item.adItem;
-                    if (showDirectReportsOnly) {    
-                        options.showDirectReportsOnly = true;                
-                    }
-                }
+                } 
             }
-            onFilter({options: options, results: fuse.list});			
+            if (options.bestMatchSearch) {
+                if (prevBestMatch && options && options.bestMatch && prevBestMatch.id !== options.bestMatch.id){
+                    onFilter({options: options, results: fuse.list});
+                }
+            } else {
+                onFilter({options: options, results: fuse.list});
+            }
+            prevBestMatch = options.bestMatch;
+            prevSearchString = val;
+        }
+    }
+
+    function performKeywordSearch(e) {
+        requestAnimationFrame(function(){
+            keywordSearch(e);
         });
     }
 	
@@ -440,7 +459,13 @@ var MMStaffDirectory = function(options) {
 
     // Bind events
     function bindEvents() {
-        $('.search-input').on('keyup', _.throttle(performKeywordSearch, 333));
+        $('.search-input').on('keyup', function(event) {
+            clearTimeout(timeout);
+
+            setTimeout(function(){
+                performKeywordSearch(event);
+            }, 500);
+        });
         $('.search-dd').on('change', performDropdownSearch);
     }
 
