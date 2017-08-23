@@ -338,9 +338,9 @@ var MMStaffDirectory = function(options) {
         if (!isIE() && self.lazyLoader !== null) { self.lazyLoader.update(); }
     }
 
+    var dropDownFilters = { };
     // Apply dropdown filters
     function applyDropdownFilters(results) {
-        var dropDownFilters = {};
 
         function applyFilter(items, propKey, selector, split) {
             // Get filter value from dropdown
@@ -397,17 +397,20 @@ var MMStaffDirectory = function(options) {
     var prevBestMatch = {id: -1};
     function keywordSearch(filterData) {
         var trigerredByKeywordSearch = !!filterData.currentTarget;
+        var adminSearch = !trigerredByKeywordSearch &&  filterData.Function && filterData.Function.length;
         var val = $('.search-input').val().trim();
         var options = {
             bestMatchSearch: false,
             showDirectReportsOnly: false,
-            bestMatch: {id: -1}
+            bestMatch: {id: -1},
+            adminSearch: adminSearch
         }
         if (!trigerredByKeywordSearch || (trigerredByKeywordSearch && val !== prevSearchString)) {
             var bestMatches = [];
             var otherMatches = [];
 
             if (val.length <= 2) {
+                options.adminSearch = dropDownFilters.Function && dropDownFilters.Function.length;
                 renderAll();
             }
             else {
