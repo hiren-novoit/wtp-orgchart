@@ -430,7 +430,10 @@ var MMStaffDirectory = function(options) {
                 if (bestMatches.length) {
                     options.bestMatchSearch = true;
                     options.bestMatch = bestMatches[0].item.adItem;
-                } 
+                } else {
+                    options.bestMatchSearch = true;
+                    options.bestMatch = {id: -2};
+                }
             }
             if (options.bestMatchSearch) {
                 if (prevBestMatch && options && options.bestMatch && prevBestMatch.id !== options.bestMatch.id){

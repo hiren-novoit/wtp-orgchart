@@ -27,7 +27,8 @@ function NITOrgChart(options) {
 		levelsCache: 'levelscache',
 		levelsCacheList: 'Organisational Chart Roles',
 		managersCache: 'managerscache',
-		managersCacheList: 'Organisational Chart Managers'
+		managersCacheList: 'Organisational Chart Managers',
+		hierarchyKey: 'hierarchy'
 	}
 
 	if (typeof (options) === 'object') {
@@ -152,37 +153,80 @@ function NITOrgChart(options) {
 		}
 	}
 
-	function traverse(t, s, manager) {
-		// console.log(s.id, s.Manager);
+	function traverse(t, direction, current, prev) {
+		// console.log(current.id, current.prev);
 		// console.log(t.length);
-		if (typeof s.traversed === 'undefined') {
-			t.push(s);
-			if(s.subordinates) {
-				for(var subKey in s.subordinates){
-					traverse(t,s.subordinates[subKey], s)
+		// if (typeof current.traversed === 'undefined') {
+		var alreadyTraversed = t.find(n => n.id === current.id);
+		if (typeof alreadyTraversed === 'undefined') {
+			t.push(current);
+			var next = current[direction];
+			if(next) {
+				for(var subKey in next){
+					traverse(t, direction, next[subKey], current)
 					// console.log(t.length);
 				}
 			}
-			s.traversed = true;
+		}
+		// 	current.traversed = true;
+		// }
+	}
+
+	function normaliseLevels(t, level, current) {
+		var alreadyTraversed = t.find(n => n.id === current.id);
+		if (typeof alreadyTraversed === 'undefined') {
+			current.Level = level;
+			t.push(current);
+			if (Array.isArray(current.Managers)) {
+				current.Managers.forEach(m => {
+					normaliseLevels(t, level - 1, m);
+				});
+			}
+			if (Array.isArray(current.subordinates)) {
+				current.subordinates.forEach(s => {
+					normaliseLevels(t, level + 1, s);
+				});
+			}
 		}
 	}
 
-	function getSubordinates(staff) {
+
+
+	function getReportingHierarchy(tree, bestMatch) {
+		var reportingHierarchy = [];
+		var selfNDirectReports = [];
+		
+		if (bestMatch) {
+			traverse(selfNDirectReports, 'subordinates', bestMatch);
+		}
+
+		return reportingHierarchy;
+	}
+
+	function buildReportingTree(staff) {
 		staff.forEach((s) => {
 			// console.log(s.id, s.Manager);
 			if(Array.isArray(s.Managers)) {
+				var managersObj;
 				s.Managers.forEach(m => {
 					var manager = staff.find(mObj => mObj.id === m.id);
-					if (typeof manager !== 'undefined') { 
+					if (typeof manager !== 'undefined') {
 						// console.log('Manager found.')
 						if (typeof manager.subordinates === 'undefined') {
 							// console.log('Created sub o obj')
-							manager.subordinates = {};
+							manager.subordinates = [];
 						}					
-						manager.subordinates[s.id] = s;
+						manager.subordinates.push(s);
+						if (typeof managersObj === 'undefined') {
+							managersObj = [];
+						}
+						managersObj.push(manager);
 						s.pushedIntoTree = true;
 					}
 				});
+				if (managersObj) {
+					s.Managers = managersObj; 
+				}
 			}
 		});
 	}
@@ -207,13 +251,14 @@ function NITOrgChart(options) {
 
 		// Fix staff whose manager doesn't exist in the current context (Remove their manager)
 		// Fix staff whose manager is on the same or lower level as them (Remove their manager)
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Manager != -1) {
-				var parent = getParent(staff, staff[i]);
+		// HG: not required anymore since levels are fixed for best match search
+		// for (var i = 0; i < staff.length; i++) {
+		// 	if (staff[i].Manager != -1) {
+		// 		var parent = getParent(staff, staff[i]);
 
-				if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
-			}
-		}
+		// 		if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
+		// 	}
+		// }
 
 		var overlay = [];
 				
@@ -239,13 +284,13 @@ function NITOrgChart(options) {
 		var trees = [];
 		// HG Optimized code
 		// find & push staff in subordinates property of the manager
-		getSubordinates(staff);
+		// buildReportingTree(staff);
 		_.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
 
 		var s;
 		for(s in staff) {
 			var t = [];
-			traverse(t, staff[s]);
+			traverse(t, 'subordinates', staff[s]);
 			trees.push(t);
 		}// end HG Optimized code
 
@@ -636,16 +681,43 @@ function NITOrgChart(options) {
 		return def;
 	}
 
+	function incrLevelForManagersBy(amount, subordinate) {
+		if (Array.isArray(subordinate.Managers)) {
+			subordinate.Managers.forEach(m => {
+				m.Level += amount;
+				incrLevelForManagersBy(amount, m);
+			});
+		}
+	}
+
+	function transformLevel(oldMin, oldMax, newMin, newMax, oldValue) {
+		var oldRange = oldMax - oldMin;
+		var newRange = newMax - newMin;
+
+		if (oldRange === 0) {
+			return newMin;
+		} else {
+			return (((oldValue-oldMin) * newRange) / oldRange) + newMin;
+		}
+	}
+
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
+		// buildReportingTree(staff);
 		var bestMatch;
+		var subordinatesTree = [];
+		var managersTree = [];
+
 		if (buildOptions.bestMatchSearch) {
 			bestMatch = staff.find(s => s.id === buildOptions.bestMatch.id);
-			if (buildOptions.showDirectReportsOnly) {				
-				getSubordinates(staff);
-				staff = [];
-				traverse(staff, bestMatch);
+			if (bestMatch) {
+			buildReportingTree(staff);
+
+			traverse(subordinatesTree, 'subordinates', bestMatch);
+			traverse(managersTree, 'Managers', bestMatch);
+
+			staff = [].concat(managersTree.filter(m => m.id !== bestMatch.id), subordinatesTree);
 			} else {
-				var bestMatches = staff.filter(s => s.Function == buildOptions.bestMatch.Function);
+				staff = [];
 			}
 		}
 
@@ -670,25 +742,88 @@ function NITOrgChart(options) {
 			if (s.Level === -1) {
 				if (buildOptions.adminSearch) {
 					s.Level = 1;
-				} else {
+				}
+				if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
+					// var managersArray = s.Managers;
+					// var subordinatesArray = s.subordinates;
+					// s.Managers = undefined;
+					// s.subordinates = undefined;
+					// managersArray.forEach(manager => {
+					// 	var mFromS = staff.find(mfs => mfs.id === manager.id);
+					// 	if (mFromS) {
+					// 		mFromS.Assistant = jQuery.extend(true, {}, s);								
+					// 	}							
+					// });
+					// s.Managers = managersArray;
+					// s.subordinates = subordinatesArray;
 					if (Array.isArray(s.Managers)) {
 						s.Managers.forEach(mFrmA => {
 							var manager = staff.find(m => m.id == mFrmA.id);
-							manager.Assistant = jQuery.extend(true, {}, s);
+							if (manager) {
+								manager.Assistant = jQuery.extend(true, {}, s);
+							}
 						});
 					}
 				}
 			}
 		});
 
-		if (buildOptions.bestMatchSearch && !(buildOptions.showDirectReportsOnly)) {
-			staff = bestMatches;
+		if (buildOptions.bestMatchSearch && bestMatch) {
+			// If best match is an Assistant truncate all it's subordinates
+			if (bestMatch.Level === -1) {
+				// var subIds = [];
+				// subIds = subordinatesTree.map(sb => sb.id);
+				// staff = staff.filter(s => subIds.indexOf(s.id) < 0);
+				var ms = bestMatch.Managers;				
+				if (Array.isArray(ms)) {
+					bestMatch.subordinates = undefined;
+					bestMatch.Managers = undefined;
+					ms.forEach(m => {
+						m.Assistant = jQuery.extend(true, {}, bestMatch);
+					});
+					staff = ms;
+				} else {
+					staff = bestMatch;
+				}
+				
+			}
+
+			// find assistant for best match if bm is not assistant or support staff
+			if (bestMatch.Level !== -1 && Array.isArray(bestMatch.subordinates)) {
+				var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
+				if (assistant) {
+					// below dirty coding to solve too much recursion issue
+					var subo = assistant.subordinates;
+					var ms = assistant.Managers;
+					assistant.subordinates = undefined;
+					assistant.Managers = undefined;
+					bestMatch.Assistant = jQuery.extend(true, {}, assistant);
+					assistant.subordinates = subo;
+					//remove best match from assistants managers list
+					assistant.Managers = ms.filter(m => m.id !== bestMatch.id);
+				}
+
+				// Remove assistants
+				staff = staff.filter(s => s.Level !== -1);
+			}
+
+			var normalisationTree = [];
+			normaliseLevels(normalisationTree, 0, bestMatch);
+			var lmap = staff.map(s => s.Level)
+			var oldMin = Math.min.apply(null, lmap);
+			var oldMax = Math.max.apply(null, lmap);
+			var newMax = oldMax - oldMin;
+			var newMin = 0;
+
+			staff.forEach(s => { s.Level = transformLevel(oldMin, oldMax, newMin, newMax, s.Level)})
 		}
 		
 		//HG: Remove below line only for UAT
 		staff = staff.filter(s => s.roleOrder !== null)
 
-		staff = reverseLevels(staff);
+		if(typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) {
+			staff = reverseLevels(staff);			
+		}
 
 		// HG: end Modified code
 
@@ -781,10 +916,10 @@ function NITOrgChart(options) {
 
 		renderChart(allStaff, locationMappings);
 
-		if (bestMatch) {
-			var bmCard = {x: bestMatch.Card.x, y: bestMatch.Card.y};
-			return bmCard;
-		}
+		// if (bestMatch) {
+		// 	var bmCard = {x: bestMatch.Card.x, y: bestMatch.Card.y};
+		// 	return bmCard;
+		// }
 	}
 
 	self.initialiseChart = initialiseChart;
