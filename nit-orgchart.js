@@ -753,150 +753,151 @@ function NITOrgChart(options) {
 		var bestMatch;
 		var subordinatesTree = [];
 		var managersTree = [];
-
+		var result = [];
 		if (buildOptions.bestMatchSearch) {
 			bestMatch = staff.find(s => s.id === buildOptions.bestMatch.id);
 			if (bestMatch) {
 				bestMatch.isBestMatch = true;
 				buildReportingTree(staff);
 
-			traverse(subordinatesTree, 'subordinates', bestMatch);
-			traverse(managersTree, 'Managers', bestMatch);
+				traverse(subordinatesTree, 'subordinates', bestMatch);
+				traverse(managersTree, 'Managers', bestMatch);
 
-			staff = [].concat(managersTree.filter(m => m.id !== bestMatch.id), subordinatesTree);
-			} else {
-				staff = [];
-			}
-		}
-
-		staff.forEach(s => {
-			s.Level = -2;
-			s.roleOrder = null;
-			if (s.Role) {
-				var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
-				if (roleObj) {
-					s.Level = +roleObj.ocr_level;
-					s.roleOrder = +roleObj.ocr_order;
-				} else {
-					console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
-				}
-			} else {
-				console.log('User ' + s.Name + ' does not have any role assigned.')
-			}
-		});
-
-		if (buildOptions.bestMatchSearch && bestMatch) {
-			// If best match is an Assistant truncate all it's subordinates
-			if (bestMatch.Level === -1) {
-				// var subIds = [];
-				// subIds = subordinatesTree.map(sb => sb.id);
-				// staff = staff.filter(s => subIds.indexOf(s.id) < 0);
-				var ms = bestMatch.Managers;				
-				if (Array.isArray(ms)) {
-					bestMatch.subordinates = undefined;
-					bestMatch.Managers = undefined;
-					ms.forEach(m => {
-						m.Assistant = jQuery.extend(true, {}, bestMatch);
-					});
-					staff = ms;
-				} else {
-					staff = bestMatch;
-				}
-				buildOptions.bestMatchSearch = false;
-			} else {
-				// find assistant for best match if bm is not assistant or support staff
-				if (bestMatch.Level !== -1 && Array.isArray(bestMatch.subordinates)) {
-					var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
-					if (assistant) {
-						// below dirty coding to solve too much recursion issue
-						var subo = assistant.subordinates;
-						var ms = assistant.Managers;
-						assistant.subordinates = undefined;
-						assistant.Managers = undefined;
-						bestMatch.Assistant = jQuery.extend(true, {}, assistant);
-						// assistant.subordinates = subo;
-						// //remove best match from assistants managers list
-						// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
-					}
-
-					// Remove assistants
-					// staff = staff.filter(s => s.id === assistant.id || s.Level !== -1);
-					staff = staff.filter(s.Level !== -1);
-				}
-				staff.forEach(s => s.subordinates = undefined);
-				buildReportingTree(staff);
-
-
-				var normalisationTree = [];
-				normaliseLevels(normalisationTree, 0, bestMatch);
-
-				// var lmap = staff.map(s => { return {level: s.Level, normalisedLevel: s.normalisedLevel}});
-				var lmap = staff.map(s => s.normalisedLevel);
-				var oldMin = Math.min.apply(null, lmap);
-				var oldMax = Math.max.apply(null, lmap);
-				var newMax = oldMax - oldMin;
-				var newMin = 0;
-
-				staff.forEach(s => { s.normalisedLevel = transformLevel(oldMin, oldMax, newMin, newMax, s.normalisedLevel)})
-
-				lmap = { };
-				staff.forEach(s => {
-					if (typeof lmap[s.Level] === 'undefined') {
-						lmap[s.Level] = [];
-					}
-					lmap[s.Level].push(s.normalisedLevel);
-				});
-
-				for(var key in lmap) {
-					lmap[key].sort((a, b) => b-a);
-				}
-				staff.sort((a, b) => {
-					if (a.Level !== b.Level) {
-						return b.Level - a.Level;
+				result = [].concat(managersTree.filter(m => m.id !== bestMatch.id), subordinatesTree);
+////
+				// Role mapping
+				result.forEach(s => {
+					s.Level = -2;
+					s.roleOrder = null;
+					if (s.Role) {
+						var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
+						if (roleObj) {
+							s.Level = +roleObj.ocr_level;
+							s.roleOrder = +roleObj.ocr_order;
+						} else {
+							console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
+						}
 					} else {
-						return a.normalisedLevel - b.normalisedLevel;
-					}
-				})
-				var cStaff;
-				var pStaff;
-				var levelShift = 0;
-				for(var i=0; i < staff.length; i++) {
-					cStaff = staff[i];
-					if (i > 0) {
-						pStaff = staff[i-1];
-						if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
-							levelShift++;
-						}
-					}
-					cStaff.Level -= levelShift;
-				}
-
-				staff.forEach(s => {
-					if (Array.isArray(s.Managers)) {
-						if(s.Managers.length > 1){
-							s.Managers.sort( (a, b) => {
-								var x = (a.Level * 10 + a.roleOrder);
-								var y =  (b.Level * 10 + b.roleOrder);
-								if (x !== y) {
-									return y - x;
-								} else {
-									if(a.Name < b.Name) return 1;
-									if(a.Name > b.Name) return -1;
-									return 0;												}
-							});
-							s.Managers.forEach((m, i) => {
-								if (i > 0) {
-									m.OtherManager = true;
-								}
-							});
-						}
-						s.Manager = s.Managers[0].id;
+						console.log('User ' + s.Name + ' does not have any role assigned.')
 					}
 				});
 
+				// If best match is an Assistant truncate all it's subordinates
+				if (bestMatch.Level === -1) {
+					// var subIds = [];
+					// subIds = subordinatesTree.map(sb => sb.id);
+					// staff = staff.filter(s => subIds.indexOf(s.id) < 0);
+					var ms = bestMatch.Managers;				
+					if (Array.isArray(ms)) {
+						bestMatch.subordinates = undefined;
+						bestMatch.Managers = undefined;
+						ms.forEach(m => {
+							m.Assistant = jQuery.extend(true, {}, bestMatch);
+						});
+						result = ms;
+					} else {
+						result = bestMatch;
+					}
+					buildOptions.bestMatchSearch = false;
+				} else {
+					// find assistant for best match if bm is not assistant or support staff
+					if (bestMatch.Level !== -1 && Array.isArray(bestMatch.subordinates)) {
+						var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
+						if (assistant) {
+							// below dirty coding to solve too much recursion issue
+							var subo = assistant.subordinates;
+							var ms = assistant.Managers;
+							assistant.subordinates = undefined;
+							assistant.Managers = undefined;
+							bestMatch.Assistant = jQuery.extend(true, {}, assistant);
+							// assistant.subordinates = subo;
+							// //remove best match from assistants managers list
+							// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
+						}
+
+						// Remove assistants
+						// staff = staff.filter(s => s.id === assistant.id || s.Level !== -1);
+						staff = staff.filter(s.Level !== -1);
+					}
+					staff.forEach(s => s.subordinates = undefined);
+					buildReportingTree(staff);
+
+
+					var normalisationTree = [];
+					normaliseLevels(normalisationTree, 0, bestMatch);
+
+					// var lmap = staff.map(s => { return {level: s.Level, normalisedLevel: s.normalisedLevel}});
+					var lmap = staff.map(s => s.normalisedLevel);
+					var oldMin = Math.min.apply(null, lmap);
+					var oldMax = Math.max.apply(null, lmap);
+					var newMax = oldMax - oldMin;
+					var newMin = 0;
+
+					staff.forEach(s => { s.normalisedLevel = transformLevel(oldMin, oldMax, newMin, newMax, s.normalisedLevel)})
+
+					lmap = { };
+					staff.forEach(s => {
+						if (typeof lmap[s.Level] === 'undefined') {
+							lmap[s.Level] = [];
+						}
+						lmap[s.Level].push(s.normalisedLevel);
+					});
+
+					for(var key in lmap) {
+						lmap[key].sort((a, b) => b-a);
+					}
+					staff.sort((a, b) => {
+						if (a.Level !== b.Level) {
+							return b.Level - a.Level;
+						} else {
+							return a.normalisedLevel - b.normalisedLevel;
+						}
+					})
+					var cStaff;
+					var pStaff;
+					var levelShift = 0;
+					for(var i=0; i < staff.length; i++) {
+						cStaff = staff[i];
+						if (i > 0) {
+							pStaff = staff[i-1];
+							if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
+								levelShift++;
+							}
+						}
+						cStaff.Level -= levelShift;
+					}
+
+					staff.forEach(s => {
+						if (Array.isArray(s.Managers)) {
+							if(s.Managers.length > 1){
+								s.Managers.sort( (a, b) => {
+									var x = (a.Level * 10 + a.roleOrder);
+									var y =  (b.Level * 10 + b.roleOrder);
+									if (x !== y) {
+										return y - x;
+									} else {
+										if(a.Name < b.Name) return 1;
+										if(a.Name > b.Name) return -1;
+										return 0;												}
+								});
+								s.Managers.forEach((m, i) => {
+									if (i > 0) {
+										m.OtherManager = true;
+									}
+								});
+							}
+							s.Manager = s.Managers[0].id;
+						}
+					});
+				}
+
+////
+			} else {
+				result = [];
 			}
 		}
 
+		return result;		
 		// bestMatch.subordinates.sort((a, b) => {
 		// 	var x = (a.Level * 10 + a.roleOrder);
 		// 	var y =  (b.Level * 10 + b.roleOrder);
@@ -912,38 +913,42 @@ function NITOrgChart(options) {
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
 		// Assign a level on each person based on the role
 		// HG: to assign levels more efficiently
-		staff.forEach(s => {
-			s.Level = -2;
-			s.roleOrder = null;
-			if (s.Role) {
-				var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
-				if (roleObj) {
-					s.Level = +roleObj.ocr_level;
-					s.roleOrder = +roleObj.ocr_order;
+		if (typeof buildOptions.bestMatchSearch === 'undefined') {
+			staff.forEach(s => {
+				s.Level = -2;
+				s.roleOrder = null;
+				if (s.Role) {
+					var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
+					if (roleObj) {
+						s.Level = +roleObj.ocr_level;
+						s.roleOrder = +roleObj.ocr_order;
+					} else {
+						console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
+					}
 				} else {
-					console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
+					console.log('User ' + s.Name + ' does not have any role assigned.')
 				}
-			} else {
-				console.log('User ' + s.Name + ' does not have any role assigned.')
-			}
-
-			// Add assistants to managers
-			if (s.Level === -1) {
-				if (buildOptions.adminSearch) {
-					s.Level = 1;
-				}
-				if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
-					if (Array.isArray(s.Managers)) {
-						s.Managers.forEach(mFrmA => {
-							var manager = staff.find(m => m.id == mFrmA.id);
-							if (manager) {
-								manager.Assistant = jQuery.extend(true, {}, s);
-							}
-						});
+	
+				// Add assistants to managers
+				if (s.Level === -1) {
+					if (buildOptions.adminSearch) {
+						s.Level = 1;
+					}
+					if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
+						if (Array.isArray(s.Managers)) {
+							s.Managers.forEach(mFrmA => {
+								var manager = staff.find(m => m.id == mFrmA.id);
+								if (manager) {
+									manager.Assistant = jQuery.extend(true, {}, s);
+								}
+							});
+						}
 					}
 				}
-			}
-		});
+			});	
+		} else {
+			staff = buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions);
+		}
 
 		//HG: Remove below line only for UAT
 		staff = staff.filter(s => s.roleOrder !== null)
