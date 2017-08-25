@@ -27,8 +27,7 @@ function NITOrgChart(options) {
 		levelsCache: 'levelscache',
 		levelsCacheList: 'Organisational Chart Roles',
 		managersCache: 'managerscache',
-		managersCacheList: 'Organisational Chart Managers',
-		hierarchyKey: 'hierarchy'
+		managersCacheList: 'Organisational Chart Managers'
 	}
 
 	if (typeof (options) === 'object') {
@@ -235,7 +234,8 @@ function NITOrgChart(options) {
 		});
 	}
 
-	function orderStaff(staff, highestLevel, bestMatchSearch) {
+	// function orderStaff(staff, highestLevel, bestMatchSearch) {
+	function orderStaff(staff, highestLevel) {
 		var gapFillers = [];
 
 		// Add properties used for positioning to all staff
@@ -255,57 +255,97 @@ function NITOrgChart(options) {
 
 		// Fix staff whose manager doesn't exist in the current context (Remove their manager)
 		// Fix staff whose manager is on the same or lower level as them (Remove their manager)
-		// HG: not required anymore since levels are fixed for best match search
-		// for (var i = 0; i < staff.length; i++) {
-		// 	if (staff[i].Manager != -1) {
-		// 		var parent = getParent(staff, staff[i]);
+		for (var i = 0; i < staff.length; i++) {
+			if (staff[i].Manager != -1) {
+				var parent = getParent(staff, staff[i]);
 
-		// 		if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
-		// 	}
-		// }
+				if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
+			}
+		}
 
-		// var overlay = [];
-				
-		// // All staff that have a negative level are actually to be laid over the top next to the exec's later.
-		// for (var i = staff.length - 1; i >= 0; i--) {
-		// 	if (staff[i].Level == -1) {
-		// 		overlay.push(staff[i]);
-		// 		staff.splice(i, 1);
-		// 	}
-		// }
+		var overlay = [];
 
-		var trees = [];
-		// HG don't execute this code for administration function
+		// All staff that have a negative level are actually to be laid over the top next to the exec's later.
+		for (var i = staff.length - 1; i >= 0; i--) {
+			if (staff[i].Level == -1) {
+				overlay.push(staff[i]);
+				staff.splice(i, 1);
+			}
+		}
+
 		// First move all staff who have no parent or children out of the way (no relationship groups to care about)
 		// Also anyone on the bottom level, don't put them in thier own trees - just group them with the rest
-		if (bestMatchSearch) {
-			// for (var i = staff.length - 1; i >= 0; i--) {
-			// 	if ((staff[i].Manager == -1 && !hasChildren(staff, staff[i].id)) || staff[i].Level == highestLevel) {
-			// 		gapFillers.push(staff[i]);
-			// 		staff.splice(i, 1);
-			// 	}
-			// }		
-			gapFillers = staff.filter(s => s.OtherManager);
-			
-			staff = staff.filter(s => typeof s.OtherManager === 'undefined');
-			trees.push([]);
-			traverse(trees[0], 'subordinates', staff[0], staff);
-			// var s;
-			// for(s in staff) {
-			// 	var t = [];
-			// 	traverse(t, 'subordinates', staff[s]);
-			// 	trees.push(t);
-			// }// end HG Optimized code
-		} else {
-			gapFillers = staff;
-			staff = []
+		for (var i = staff.length - 1; i >= 0; i--) {
+			if ((staff[i].Manager == -1 && !hasChildren(staff, staff[i].id)) || staff[i].Level == highestLevel) {
+				gapFillers.push(staff[i]);
+				staff.splice(i, 1);
+			}
 		}
 
 		// Separate out all of the trees
+		var trees = [];
 		// HG Optimized code
 		// find & push staff in subordinates property of the manager
-		// buildReportingTree(staff);
-		// _.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
+		staff.forEach((s) => {
+			// console.log(s.id, s.Manager);
+			if(s.Manager !== -1) {
+				var manager = staff.find(m => s.Manager === m.id);
+				if (typeof manager !== 'undefined') { 
+					// console.log('Manager found.')
+					if (typeof manager.subordinates === 'undefined') {
+						// console.log('Created sub o obj')
+						manager.subordinates = {};
+					}					
+					manager.subordinates[s.id] = s;
+					s.pushedIntoTree = true;
+				}
+			}
+		});
+		_.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
+		function traverse(t, s, manager) {
+			// console.log(s.id, s.Manager);
+			t.push(s);
+			// console.log(t.length);
+			if(s.subordinates) {
+				for(var subKey in s.subordinates){
+					traverse(t,s.subordinates[subKey], s)
+					// console.log(t.length);
+				}
+			}
+		}
+		var s;
+		for(s in staff) {
+			var t = [];
+			traverse(t, staff[s]);
+			trees.push(t);
+		}// end HG Optimized code
+
+		// end extract out all managers from staff array
+		// while (staff.length > 0) {
+		// 	for (var i = staff.length - 1; i >= 0; i--) {
+		// 		var curr = staff[i];
+		// 		if (curr.Manager == -1) {
+		// 			trees.push([curr]);
+		// 			staff.splice(i, 1);
+		// 			continue;
+		// 		}
+
+		// 		var treeIndex = -1;
+
+		// 		for (var x = 0; x < trees.length; x++) {
+		// 			for (var y = 0; y < trees[x].length; y++) {
+		// 				if (trees[x][y].id == curr.Manager) {
+		// 					treeIndex = x;
+		// 				}
+		// 			}
+		// 		}
+
+		// 		if (treeIndex != -1) {
+		// 			trees[treeIndex].push(curr);
+		// 			staff.splice(i, 1);
+		// 		}
+		// 	}
+		// }
 
 		// Keep track of the position of trees / free elements
 		var allStaff = [];
@@ -322,9 +362,6 @@ function NITOrgChart(options) {
 		// Be sure to handle sublevels on overflow of MAXPERLEVEL
 		var fillersLen = gapFillers.length; // Evaluate this once, as we will be adding items to the array while we loop
 		for (var i = 0; i < fillersLen; i++) {
-			//Each level is divided into 10 sub-levels at the moment
-			//Each sub-level has space for 15 people
-			//find position within a sub-level if 15 people are filled fit into next sub-level
 			while (levelMaxPos[gapFillers[i].Level * MAXSUBLEVELS + gapFillers[i].SubLevel] >= MAXPERLEVEL) {
 				gapFillers[i].SubLevel++;
 			}
@@ -616,9 +653,6 @@ function NITOrgChart(options) {
 			if (curr.IsAssistant) {
 				y += 60;
 				x -= 10;
-				// if (nextLevelAssistantCorrection == null) {
-				// 	nextLevelAssistantCorrection = assistantCorrection + 60;
-				// }
 			}
 
 			var card = new Card(draw, curr, locationMappings);
@@ -714,7 +748,7 @@ function NITOrgChart(options) {
 		}
 	}
 
-	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
+	function buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions) {
 		// buildReportingTree(staff);
 		var bestMatch;
 		var subordinatesTree = [];
@@ -735,8 +769,6 @@ function NITOrgChart(options) {
 			}
 		}
 
-		// Assign a level on each person based on the role
-		// HG: to assign levels more efficiently
 		staff.forEach(s => {
 			s.Level = -2;
 			s.roleOrder = null;
@@ -750,23 +782,6 @@ function NITOrgChart(options) {
 				}
 			} else {
 				console.log('User ' + s.Name + ' does not have any role assigned.')
-			}
-
-			// Add assistants to managers
-			if (s.Level === -1) {
-				if (buildOptions.adminSearch) {
-					s.Level = 1;
-				}
-				if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
-					if (Array.isArray(s.Managers)) {
-						s.Managers.forEach(mFrmA => {
-							var manager = staff.find(m => m.id == mFrmA.id);
-							if (manager) {
-								manager.Assistant = jQuery.extend(true, {}, s);
-							}
-						});
-					}
-				}
 			}
 		});
 
@@ -892,7 +907,44 @@ function NITOrgChart(options) {
 		// 		if(a.Name > b.Name) return 1;
 		// 		return 0;												}
 		// });
-		
+	}
+
+	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
+		// Assign a level on each person based on the role
+		// HG: to assign levels more efficiently
+		staff.forEach(s => {
+			s.Level = -2;
+			s.roleOrder = null;
+			if (s.Role) {
+				var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
+				if (roleObj) {
+					s.Level = +roleObj.ocr_level;
+					s.roleOrder = +roleObj.ocr_order;
+				} else {
+					console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
+				}
+			} else {
+				console.log('User ' + s.Name + ' does not have any role assigned.')
+			}
+
+			// Add assistants to managers
+			if (s.Level === -1) {
+				if (buildOptions.adminSearch) {
+					s.Level = 1;
+				}
+				if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
+					if (Array.isArray(s.Managers)) {
+						s.Managers.forEach(mFrmA => {
+							var manager = staff.find(m => m.id == mFrmA.id);
+							if (manager) {
+								manager.Assistant = jQuery.extend(true, {}, s);
+							}
+						});
+					}
+				}
+			}
+		});
+
 		//HG: Remove below line only for UAT
 		staff = staff.filter(s => s.roleOrder !== null)
 
@@ -942,12 +994,6 @@ function NITOrgChart(options) {
 			//HG below code is trying to find min position out of current staff array
 			minOffset = Math.min.apply(null, currStaff.map(cs => cs.pos));
 
-			// for (var i = 0; i < currStaff.length; i++) {
-			// 	if (minOffset == null || currStaff[i].pos < minOffset) {
-			// 		minOffset = currStaff[i].pos;
-			// 	}
-			// }
-
 			for (var i = 0; i < currStaff.length; i++) {
 				currStaff[i].pos += (highestPos - minOffset);
 
@@ -963,11 +1009,8 @@ function NITOrgChart(options) {
 
 				for (var i = 0; i < currStaff.length; i++) {
 					if (currStaff[i].Level != lx) continue;
-					if (currStaff[i].SubLevel > currMaxSubLevel){ 
+					if (currStaff[i].SubLevel > currMaxSubLevel) { 
 						currMaxSubLevel = currStaff[i].SubLevel;
-						// if (currStaff[i].Assistant) {
-						// 	currMaxSubLevel += 0.5;
-						// }
 					}
 
 					currStaff[i].SubLevelOffset = subLevelOffset + currStaff[i].SubLevel;
