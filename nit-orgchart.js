@@ -737,15 +737,332 @@ function NITOrgChart(options) {
 		}
 	}
 
-	function transformLevel(oldMin, oldMax, newMin, newMax, oldValue) {
-		var oldRange = oldMax - oldMin;
-		var newRange = newMax - newMin;
+	// function transformLevel(oldMin, oldMax, newMin, newMax, oldValue) {
+	function transformLevel(staff, property, reverse) {
+		function transform(oldMin, oldMax, newMin, newMax, oldValue) {
+			var oldRange = oldMax - oldMin;
+			var newRange = newMax - newMin;
 
-		if (oldRange === 0) {
-			return newMin;
-		} else {
-			return (((oldValue-oldMin) * newRange) / oldRange) + newMin;
+			if (oldRange === 0) {
+				return newMin;
+			} else {
+				return (((oldValue-oldMin) * newRange) / oldRange) + newMin;
+			}
 		}
+
+		var lmap = staff.map(s => s[property]);
+		var oldMin = Math.min.apply(null, lmap);
+		var oldMax = Math.max.apply(null, lmap);
+		var newMax = oldMax - oldMin;
+		var newMin = 0;
+
+		if (reverse) {
+			newMin = newMax;
+			newMax = 0;
+		}
+
+		staff.forEach(s => { s[property] = transform(oldMin, oldMax, newMin, newMax, s[property])});
+	}
+
+	function sortBy(a, b, properties) {
+		var key;
+		var result = -1;
+		for(key in properties) {
+			if (a[key] < b[key]) {
+				result = -1 * properties[key];
+				break;
+			}
+			if (a[key] > b[key]) {
+				result = 1 * properties[key];
+				break;
+			}
+			result = 0;
+		}
+		return result;
+	}
+
+	function sortByLevelDRoleName(a, b) {
+		if (a.Level !== b.Level) {
+			return b.Level - a.Level;
+		} else {
+			if (a.roleOrder !== b.roleOrder) {
+				return a.roleOrder - b.roleOrder;
+			} else {
+				if(a.Name < b.Name) return -1;
+				if(a.Name > b.Name) return 1;
+				return 0;
+			}
+		}
+	}
+
+	function TreePositioningAlgo(topNode) {
+		var prevNode;
+		// var levelZeroPtr = staff[0];
+		var xTopAdjustment;
+		var yTopAdjustment;
+		var levelSeparation = 1;
+		var maxDepth = 15;
+		var siblingSeparation = 0.5;
+		var subtreeSeparation = 1.5;
+		var levelNodes = { }
+
+		function InitTree(node, topNode) {
+			var lastNodeAtLevel = null;
+			if (typeof levelNodes[node.normalisedLevel] === 'undefined') {
+				levelNodes[node.normalisedLevel] = [];
+			} else {
+				lastNodeAtLevel = levelNodes[node.normalisedLevel].pop();
+				lastNodeAtLevel.rightNeighborAtLevel = node;
+				levelNodes[node.normalisedLevel].push(lastNodeAtLevel);	
+			}
+			node.leftNeighborAtLevel = lastNodeAtLevel;
+			node.rightNeighborAtLevel = null;
+			levelNodes[node.normalisedLevel].push(node);
+			node.isLeafNode = true;
+
+			if(topNode) {
+				node.left = null;
+				node.right = null;
+			}
+
+			if(node.subordinates && node.subordinates.length > 0) {
+				node.isLeafNode = false;
+			}
+
+			if (!node.isLeafNode) {
+				// node.subordinates.sort(sortByLevelDRoleName);
+				node.subordinates.sort((a,b) => {
+					var sortPropOrder = {
+											"locationId": 1, 
+											"Level": -1, 
+											"roleOrder": 1, 
+											"Name": 1
+										};
+					return sortBy(a, b, sortPropOrder);
+				});
+				node.subordinates.forEach((s, i) => {
+					console.log(i);
+					if (i > 0) {
+						console.log(node.subordinates[i-1].Name);
+						s.left = node.subordinates[i-1];
+					}
+					if (i < node.subordinates.length - 1) {
+						console.log(node.subordinates[i+1].Name);
+						s.right = node.subordinates[i+1];
+					}
+					InitTree(s);
+				});
+			}
+		}
+
+		function PositionTree(node) {
+			if (node) {
+				node.xpos = Math.ceil(node.subordinates.length/2);
+				node.ypos = node.normalisedLevel;
+				InitTree(node, true);
+
+				//Initialize the list of previous nodes at each level
+				InitPrevNodeList();
+
+				//Do the preliminary positioning with a postorder walk
+				FirstWalk(node, 0);
+
+				xTopAdjustment = node.xpos - node.prelim;
+				yTopAdjustment = node.ypos;
+
+				return SecondWalk(node, 0);
+			} else {
+				return true;
+			}
+		}
+
+		function FirstWalk(node) {
+			var leftNeighbor = node.leftNeighborAtLevel;
+			SetPrevNodeAtLevel(node.normalisedLevel, node);
+			node.modifier = 0;
+			if (node.isLeafNode || node.normalisedLevel === maxDepth) {
+				if (node.left) {
+					node.prelim = node.left.prelim + siblingSeparation + MeanNodeSize(node.left, node);
+				} else {
+					node.prelim = 0;
+				}
+			} else {
+				var leftMost = node.subordinates[0];
+				var rightMost = node.subordinates[0];
+				FirstWalk(leftMost);
+				while(rightMost.right) {
+					rightMost = rightMost.right;
+					FirstWalk(rightMost);
+				}
+				var midPoint = leftMost.prelim + rightMost.prelim/2;
+				if(node.left) {
+					node.prelim = node.left.prelim + siblingSeparation + MeanNodeSize(node.left, node);
+					node.modifier = node.prelim - midPoint;
+					Apportion(node);
+				} else {
+					node.prelim = midPoint;
+				}
+			}
+		}
+
+		function SecondWalk(node, modsum) {
+			var result = true;
+			if (node.normalisedLevel <= maxDepth) {
+				var xTemp = xTopAdjustment + node.prelim + modsum;
+				var yTemp = yTopAdjustment + (node.normalisedLevel * levelSeparation);
+				// Check to see that xTemp and yTemp falls within drawable area
+				if (CheckExtentStrange(xTemp, yTemp)) {
+					node.xpos = xTemp;
+					node.ypos = yTemp;
+
+					if (Array.isArray(node.subordinates)) {
+						//apply the modifier value for this node to all its offspring.
+						result = SecondWalk(node.subordinates[0], modsum + node.modifier);
+					}
+
+					if (result && node.right) {
+						result = SecondWalk(node.right, modsum);
+					}
+				} else { // continuising would put the tree outside of the drawable extents range
+					result = false;
+				}
+			} else { // we are at a level deeper than what we want to draw
+				result = true;
+			}
+			return result;
+		}
+
+		// Complex piece try to undestand...
+		function Apportion(node) {
+			var leftMost = node.subordinates[0];
+			var neighbor = leftMost.leftNeighborAtLevel;
+			var compareDepth = 1;
+			var depthToStop = maxDepth - node.normalisedLevel;
+
+			while(leftMost && neighbor && compareDepth <= depthToStop) {
+				// compute the location of leftmost and where it should be with respect to neighbor
+				var leftModsum = 0;
+				var rightModsum = 0;
+				var ancestorLeftMost = leftMost;
+				var ancestorNeighbor = neighbor;
+				// TODO not sure if until means < or <= depends on debugging result
+				for(var i=0; i <= compareDepth; i++) {
+					ancestorLeftMost = ancestorLeftMost.Managers[0];
+					ancestorNeighbor = ancestorNeighbor.Managers[0];
+					rightModsum = rightModsum + ancestorLeftMost.modifier;
+					leftModsum = leftModsum + ancestorNeighbor.modifier;				
+				}
+				//find the moveDistance and apply it to Node's subtree
+				//add appropriate portions to smaller interior subtrees
+				var moveDistance = neighbor.prelim + 
+									leftModsum + 
+									subtreeSeparation + 
+									MeanNodeSize(leftMost, neighbor)
+									- (leftMost.prelim + rightModsum);
+				if (moveDistance > 0) {
+					var tempPtr = node;
+					var leftSiblings = 0;
+					while(tempPtr && tempPtr.id !== ancestorNeighbor.id){
+						leftSiblings += 1;
+						tempPtr = tempPtr.left;
+					}
+
+					if (tempPtr) {
+						//Apply portions to appropriate leftsibling subtrees
+						var portion = moveDistance / leftSiblings;
+						tempPtr = node;
+						while(tempPtr.id === ancestorNeighbor.id) {
+							tempPtr.prelim += moveDistance;
+							tempPtr.modifier += moveDistance;
+							moveDistance -= portion;
+							tempPtr = tempPtr.left;
+						}
+					} else {
+						// Don't need to move anything
+						// it needs to be done by ancestor because
+						// ancestorNeighbor and ancestorLeftmost are not siblings
+						return;
+					}
+				}
+				//Determine the leftmost descendant of node at the next lower level to
+				//compare its positioning against that of its neighbor
+				compareDepth += 1;
+				if (leftMost.isLeafNode) {
+					// I think 0 value here is probably wrong for level value
+					// leftMost = GetLeftMost(node, 0, compareDepth);
+					leftMost = GetLeftMost(node, compareDepth);
+				} else {
+					leftMost = leftMost.subordinates[0];
+				}
+			}
+		}
+
+		function GetLeftMost(node, depth) {
+			if (node.normalisedLevel >= depth) {
+				return node;
+			} else if (node.isLeafNode) {
+				return null;
+			} else {
+				var rightMost = node.subordinates[0];
+				var leftMost = GetLeftMost(rightMost, depth);
+
+				//Do a postorder walk of the subtree below node.
+				while(leftMost && rightMost.right) {
+					rightMost = rightMost.right;
+					leftMost = GetLeftMost(rightMost, depth);
+				}
+				return leftMost;
+			}
+		}
+
+		function MeanNodeSize(leftNode, rightNode) {
+			var nodeSize = 0;
+			
+			if (leftNode) {
+				// nodeSize += RightSize(leftNode);
+				nodeSize += 0.5;
+			}
+			if (rightNode) {
+				// nodeSize += LeftSize(rightNode);
+				nodeSize += 0.5;
+			}
+			return nodeSize;
+		}
+
+		function CheckExtentStrange(xValue, yValue) {
+			// if xValue is a valid value for the x-Coordinates and 
+			// 	yValue is a valid value for the y-Coordinates then 
+			// 	return true
+			// else 
+			// 	return false
+			return true;
+		}
+
+		function InitPrevNodeList() {
+			prevNode = {};
+		}
+		function GetPrevNodeAtLevel(level) {
+			return prevNode[level];
+		}
+
+		function SetPrevNodeAtLevel(level, node) {
+			prevNode[level] = node;
+		}
+
+		PositionTree(topNode);
+	}
+
+	function AssignLocationIds (staff, locations) {
+		var locationIds = {};
+		locations.forEach((l, i) => locationIds[l.Title] = i);
+
+		staff.forEach(s => {
+			if(locationIds[s.Location]) {
+				s.locationId = locationIds[s.Location];
+			} else {
+				s.locationId = null;
+			}
+		});
 	}
 
 	function buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions) {
@@ -781,7 +1098,8 @@ function NITOrgChart(options) {
 						console.log('User ' + s.Name + ' does not have any role assigned.')
 					}
 				});
-
+				// Remove staff whose role can not be found;
+				result.filter(s => s.roleOrder !== null)
 				// If best match is an Assistant truncate all it's subordinates
 				if (bestMatch.Level === -1) {
 					// var subIds = [];
@@ -796,7 +1114,7 @@ function NITOrgChart(options) {
 						});
 						result = ms;
 					} else {
-						result = bestMatch;
+						result = [bestMatch];
 					}
 					// buildOptions.bestMatchSearch = false;
 				} else {
@@ -814,101 +1132,109 @@ function NITOrgChart(options) {
 							result = [bestMatch];
 					} else if (!Array.isArray(bestMatch.Managers)  // does not have manager
 								&& !Array.isArray(bestMatch.subordinates) // does not have subordinates
-							) {
-						
+							) {						
 						result = [bestMatch];
-					} else if (true) { // TODO remove once best match search is ready
-						result = [];
 					} else {
 						// find assistant for best match if bm is not assistant or support staff
-						if (bestMatch.Level !== -1 && Array.isArray(bestMatch.subordinates)) {
-							var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
-							if (assistant) {
-								// below dirty coding to solve too much recursion issue
-								var subo = assistant.subordinates;
-								var ms = assistant.Managers;
-								assistant.subordinates = undefined;
-								assistant.Managers = undefined;
-								bestMatch.Assistant = jQuery.extend(true, {}, assistant);
-								// assistant.subordinates = subo;
-								// //remove best match from assistants managers list
-								// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
-							}
-
-							// Remove assistants
-							// staff = staff.filter(s => s.id === assistant.id || s.Level !== -1);
-							staff = staff.filter(s.Level !== -1);
+						var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
+						if (assistant) {
+							// below dirty coding to solve too much recursion issue
+							var subo = assistant.subordinates;
+							var ms = assistant.Managers;
+							assistant.subordinates = undefined;
+							assistant.Managers = undefined;
+							bestMatch.Assistant = jQuery.extend(true, {}, assistant);
+							// assistant.subordinates = subo;
+							// //remove best match from assistants managers list
+							// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
 						}
-						staff.forEach(s => s.subordinates = undefined);
-						buildReportingTree(staff);
 
+						// TODO: Remove assistants till figure out multiple managers case...
+						// staff = staff.filter(s => s.id === assistant.id || s.Level !== -1);
+						result = result.filter(s => s.Level !== -1);
+						
+						result.forEach(s => s.subordinates = undefined);
+						buildReportingTree(result);
 
-						var normalisationTree = [];
-						normaliseLevels(normalisationTree, 0, bestMatch);
+						var withMultipleMs = result.find(s => {return Array.isArray(s.Managers)  && s.Managers.length > 1});
 
-						// var lmap = staff.map(s => { return {level: s.Level, normalisedLevel: s.normalisedLevel}});
-						var lmap = staff.map(s => s.normalisedLevel);
-						var oldMin = Math.min.apply(null, lmap);
-						var oldMax = Math.max.apply(null, lmap);
-						var newMax = oldMax - oldMin;
-						var newMin = 0;
-
-						staff.forEach(s => { s.normalisedLevel = transformLevel(oldMin, oldMax, newMin, newMax, s.normalisedLevel)})
-
-						lmap = { };
-						staff.forEach(s => {
-							if (typeof lmap[s.Level] === 'undefined') {
-								lmap[s.Level] = [];
-							}
-							lmap[s.Level].push(s.normalisedLevel);
-						});
-
-						for(var key in lmap) {
-							lmap[key].sort((a, b) => b-a);
-						}
-						staff.sort((a, b) => {
-							if (a.Level !== b.Level) {
-								return b.Level - a.Level;
-							} else {
-								return a.normalisedLevel - b.normalisedLevel;
-							}
-						})
-						var cStaff;
-						var pStaff;
-						var levelShift = 0;
-						for(var i=0; i < staff.length; i++) {
-							cStaff = staff[i];
-							if (i > 0) {
-								pStaff = staff[i-1];
-								if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
-									levelShift++;
+						if (withMultipleMs) {
+							// old code below if helpful somehow
+							result.forEach(s => {
+								if (Array.isArray(s.Managers)) {
+									if(s.Managers.length > 1){
+										s.Managers.sort( (a, b) => {
+											var x = (a.Level * 10 + a.roleOrder);
+											var y =  (b.Level * 10 + b.roleOrder);
+											if (x !== y) {
+												return y - x;
+											} else {
+												if(a.Name < b.Name) return 1;
+												if(a.Name > b.Name) return -1;
+												return 0;												}
+										});
+										s.Managers.forEach((m, i) => {
+											if (i > 0) {
+												m.OtherManager = true;
+											}
+										});
+									}
+									s.Manager = s.Managers[0].id;
 								}
-							}
-							cStaff.Level -= levelShift;
-						}
+							});							
+							// this case is not handled yet
+							result = [];
+						} else {
+							var normalisationTree = [];
+							normaliseLevels(normalisationTree, 0, bestMatch);
+							
+							// var lmap = result.map(s => s.normalisedLevel);
+							// var oldMin = Math.min.apply(null, lmap);
+							// var oldMax = Math.max.apply(null, lmap);
+							// var newMax = oldMax - oldMin;
+							// var newMin = 0;
+	
+							// result.forEach(s => { s.normalisedLevel = transformLevel(oldMin, oldMax, newMin, newMax, s.normalisedLevel)})
 
-						staff.forEach(s => {
-							if (Array.isArray(s.Managers)) {
-								if(s.Managers.length > 1){
-									s.Managers.sort( (a, b) => {
-										var x = (a.Level * 10 + a.roleOrder);
-										var y =  (b.Level * 10 + b.roleOrder);
-										if (x !== y) {
-											return y - x;
-										} else {
-											if(a.Name < b.Name) return 1;
-											if(a.Name > b.Name) return -1;
-											return 0;												}
-									});
-									s.Managers.forEach((m, i) => {
-										if (i > 0) {
-											m.OtherManager = true;
-										}
-									});
+							transformLevel(result, 'normalisedLevel');
+							AssignLocationIds(result, locationMappings);
+							TreePositioningAlgo(result[0]);
+							lmap = { };
+							result.forEach(s => {
+								if (typeof lmap[s.Level] === 'undefined') {
+									lmap[s.Level] = [];
 								}
-								s.Manager = s.Managers[0].id;
+								lmap[s.Level].push(s.normalisedLevel);
+							});
+	
+							for(var key in lmap) {
+								lmap[key].sort((a, b) => b-a);
 							}
-						});
+
+							result.sort((a, b) => {
+								if (a.Level !== b.Level) {
+									return b.Level - a.Level;
+								} else {
+									return a.normalisedLevel - b.normalisedLevel;
+								}
+							});
+							
+							var cStaff;
+							var pStaff;
+							var levelShift = 0;
+							for(var i=0; i < result.length; i++) {
+								cStaff = result[i];
+								if (i > 0) {
+									pStaff = result[i-1];
+									if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
+										levelShift++;
+									}
+								}
+								cStaff.Level -= levelShift;
+							}
+
+							transformLevel(result, 'Level');
+						}
 					}
 				}
 ////
@@ -918,16 +1244,6 @@ function NITOrgChart(options) {
 		}
 
 		return result;		
-		// bestMatch.subordinates.sort((a, b) => {
-		// 	var x = (a.Level * 10 + a.roleOrder);
-		// 	var y =  (b.Level * 10 + b.roleOrder);
-		// 	if (x !== y) {
-		// 		return x - y;
-		// 	} else {
-		// 		if(a.Name < b.Name) return -1;
-		// 		if(a.Name > b.Name) return 1;
-		// 		return 0;												}
-		// });
 	}
 
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
@@ -966,12 +1282,11 @@ function NITOrgChart(options) {
 					}
 				}
 			});	
+			//HG: Remove below line only for UAT
+			staff = staff.filter(s => s.roleOrder !== null)
 		} else {
 			staff = buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions);
 		}
-
-		//HG: Remove below line only for UAT
-		staff = staff.filter(s => s.roleOrder !== null)
 
 		staff = reverseLevels(staff);
 
@@ -1011,7 +1326,7 @@ function NITOrgChart(options) {
 
 			if (typeof locStaff === 'undefined') continue; // There are no staff for this location
 
-			var currStaff = orderStaff(locStaff, highestLevel, buildOptions.bestMatchSearch);
+			var currStaff = orderStaff(locStaff, highestLevel);
 			var nextHighest = highestPos;
 
 			// Normalise the edges (Make sure the minimum positioned element in the tree is 0, no more, no less)
