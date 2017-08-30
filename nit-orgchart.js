@@ -641,11 +641,11 @@ function NITOrgChart(options) {
 
 			var curr = staff[i];
 			var currSubLevelOffset = 0;
-			if (curr.SubLevelOffset) {
+			if (typeof drawManagerLines === 'undefined' && typeof curr.SubLevelOffset !== 'undefined') {
 				currSubLevelOffset = curr.SubLevelOffset;
 			}
 			var currAssistantOffset = 0;
-			if (curr.SubLevel) {
+			if (typeof drawManagerLines === 'undefined' && typeof curr.SubLevel !== 'undefined') {
 				currAssistantOffset = assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
 			}
 			var x = 140 * curr.pos;
@@ -672,7 +672,7 @@ function NITOrgChart(options) {
 			}
 		}
 
-		if (typeof drawManagerLines !== 'undefined') {
+		if (typeof drawManagerLines !== 'undefined' && drawManagerLines) {
 			DrawManagerLines(draw, staff, locationMappings);
 		}
 		var t1 = __getNow();
@@ -1237,19 +1237,27 @@ function NITOrgChart(options) {
 							) {						
 						result = [bestMatch];
 					} else {
-						// find assistant for best match if bm is not assistant or support staff
-						var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
-						if (assistant) {
-							// below dirty coding to solve too much recursion issue
-							var subo = assistant.subordinates;
-							var ms = assistant.Managers;
-							assistant.subordinates = undefined;
-							assistant.Managers = undefined;
-							assistant.IsAssistant = true;
-							bestMatch.Assistant = jQuery.extend(true, {}, assistant);
-							// assistant.subordinates = subo;
-							// //remove best match from assistants managers list
-							// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
+						if (Array.isArray(bestMatch.subordinates)) {
+							// find assistant for best match if bm is not assistant or support staff
+							var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
+							if (assistant) {
+								// below dirty coding to solve too much recursion issue
+								var subo = assistant.subordinates;
+								var ms = assistant.Managers;
+								assistant.subordinates = undefined;
+								assistant.Managers = undefined;
+								assistant.IsAssistant = true;
+								bestMatch.Assistant = jQuery.extend(true, {}, assistant);
+								// assistant.subordinates = subo;
+								// //remove best match from assistants managers list
+								// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
+							}
+							result = result.filter(r => r.id !== assistant.id);
+						}
+
+						//for support staff
+						if (!Array.isArray(bestMatch.subordinates) && Array.isArray(bestMatch.Managers) && bestMatch.Managers[0].Level === -1){
+							bestMatch.Managers.forEach(m => {if(m.Level === -1) { m.Level = 1}});
 						}
 
 						// TODO: Remove assistants till figure out multiple managers case...
@@ -1263,36 +1271,37 @@ function NITOrgChart(options) {
 
 						if (withMultipleMs) {
 							// old code below if helpful somehow
-							result.forEach(s => {
-								if (Array.isArray(s.Managers)) {
-									if(s.Managers.length > 1){
-										s.Managers.sort( (a, b) => {
-											var x = (a.Level * 10 + a.roleOrder);
-											var y =  (b.Level * 10 + b.roleOrder);
-											if (x !== y) {
-												return y - x;
-											} else {
-												if(a.Name < b.Name) return 1;
-												if(a.Name > b.Name) return -1;
-												return 0;												}
-										});
-										s.Managers.forEach((m, i) => {
-											if (i > 0) {
-												m.OtherManager = true;
-											}
-										});
-									}
-									s.Manager = s.Managers[0].id;
-								}
-							});							
+							// result.forEach(s => {
+							// 	if (Array.isArray(s.Managers)) {
+							// 		if(s.Managers.length > 1){
+							// 			s.Managers.sort( (a, b) => {
+							// 				var x = (a.Level * 10 + a.roleOrder);
+							// 				var y =  (b.Level * 10 + b.roleOrder);
+							// 				if (x !== y) {
+							// 					return y - x;
+							// 				} else {
+							// 					if(a.Name < b.Name) return 1;
+							// 					if(a.Name > b.Name) return -1;
+							// 					return 0;												}
+							// 			});
+							// 			s.Managers.forEach((m, i) => {
+							// 				if (i > 0) {
+							// 					m.OtherManager = true;
+							// 				}
+							// 			});
+							// 		}
+							// 		s.Manager = s.Managers[0].id;
+							// 	}
+							// });							
 							// this case is not handled yet
-							result = [];
+							result = [bestMatch];
 						} else {
 							var normalisationTree = [];
 							normaliseLevels(normalisationTree, 0, bestMatch);
 							
 							transformLevel(result, 'normalisedLevel');
 							AssignLocationIds(result, locationMappings);
+							result.sort((a, b) => {var p = {"normalisedLevel": 1}; return sortBy(a, b, p);});
 							result[0].rootNode = true;
 							treePositioned = TreePositioningAlgo(result[0]);
 
@@ -1373,6 +1382,9 @@ function NITOrgChart(options) {
 								});
 							}
 
+							//TODO something to detect and close the gap if there is lengthy gap in a single line of hierarchy
+							//TODO someting to detect if there are no leaf nodes in the location of root node
+							// why location separation did not kick in for bronte
 							result.forEach(r => {
 								r.Level *= 1.25;
 							});
