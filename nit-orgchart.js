@@ -27,7 +27,8 @@ function NITOrgChart(options) {
 		levelsCache: 'levelscache',
 		levelsCacheList: 'Organisational Chart Roles',
 		managersCache: 'managerscache',
-		managersCacheList: 'Organisational Chart Managers'
+		managersCacheList: 'Organisational Chart Managers',
+		assistantOffset: 140
 	}
 
 	if (typeof (options) === 'object') {
@@ -141,17 +142,6 @@ function NITOrgChart(options) {
 	var MANAGERLINES = false;
 	var MAXPERLEVEL = 15;
 
-	function sortByRoleAndName(a, b) {
-		var roleOrder = (a.Level * 100 + a.roleOrder) - (b.Level * 100 + b.roleOrder);
-		if (roleOrder === 0) {
-			if(a.Name < b.Name) return -1;
-			if(a.Name > b.Name) return 1;
-			return 0;
-		} else {
-			return roleOrder;
-		}
-	}
-
 	function traverse(t, direction, current, staff) {
 		// console.log(current.id, current.prev);
 		// console.log(t.length);
@@ -193,8 +183,6 @@ function NITOrgChart(options) {
 		}
 	}
 
-
-
 	function getReportingHierarchy(tree, bestMatch) {
 		var reportingHierarchy = [];
 		var selfNDirectReports = [];
@@ -234,7 +222,6 @@ function NITOrgChart(options) {
 		});
 	}
 
-	// function orderStaff(staff, highestLevel, bestMatchSearch) {
 	function orderStaff(staff, highestLevel) {
 		var gapFillers = [];
 
@@ -255,23 +242,23 @@ function NITOrgChart(options) {
 
 		// Fix staff whose manager doesn't exist in the current context (Remove their manager)
 		// Fix staff whose manager is on the same or lower level as them (Remove their manager)
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Manager != -1) {
-				var parent = getParent(staff, staff[i]);
+		// for (var i = 0; i < staff.length; i++) {
+		// 	if (staff[i].Manager != -1) {
+		// 		var parent = getParent(staff, staff[i]);
 
-				if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
-			}
-		}
+		// 		if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
+		// 	}
+		// }
 
-		var overlay = [];
+		// var overlay = [];
 
-		// All staff that have a negative level are actually to be laid over the top next to the exec's later.
-		for (var i = staff.length - 1; i >= 0; i--) {
-			if (staff[i].Level == -1) {
-				overlay.push(staff[i]);
-				staff.splice(i, 1);
-			}
-		}
+		// // All staff that have a negative level are actually to be laid over the top next to the exec's later.
+		// for (var i = staff.length - 1; i >= 0; i--) {
+		// 	if (staff[i].Level == -1) {
+		// 		overlay.push(staff[i]);
+		// 		staff.splice(i, 1);
+		// 	}
+		// }
 
 		// First move all staff who have no parent or children out of the way (no relationship groups to care about)
 		// Also anyone on the bottom level, don't put them in thier own trees - just group them with the rest
@@ -283,69 +270,42 @@ function NITOrgChart(options) {
 		}
 
 		// Separate out all of the trees
-		var trees = [];
+		// var trees = [];
 		// HG Optimized code
 		// find & push staff in subordinates property of the manager
-		staff.forEach((s) => {
-			// console.log(s.id, s.Manager);
-			if(s.Manager !== -1) {
-				var manager = staff.find(m => s.Manager === m.id);
-				if (typeof manager !== 'undefined') { 
-					// console.log('Manager found.')
-					if (typeof manager.subordinates === 'undefined') {
-						// console.log('Created sub o obj')
-						manager.subordinates = {};
-					}					
-					manager.subordinates[s.id] = s;
-					s.pushedIntoTree = true;
-				}
-			}
-		});
-		_.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
-		function traverse(t, s, manager) {
-			// console.log(s.id, s.Manager);
-			t.push(s);
-			// console.log(t.length);
-			if(s.subordinates) {
-				for(var subKey in s.subordinates){
-					traverse(t,s.subordinates[subKey], s)
-					// console.log(t.length);
-				}
-			}
-		}
-		var s;
-		for(s in staff) {
-			var t = [];
-			traverse(t, staff[s]);
-			trees.push(t);
-		}// end HG Optimized code
-
-		// end extract out all managers from staff array
-		// while (staff.length > 0) {
-		// 	for (var i = staff.length - 1; i >= 0; i--) {
-		// 		var curr = staff[i];
-		// 		if (curr.Manager == -1) {
-		// 			trees.push([curr]);
-		// 			staff.splice(i, 1);
-		// 			continue;
+		// staff.forEach((s) => {
+		// 	// console.log(s.id, s.Manager);
+		// 	if(s.Manager !== -1) {
+		// 		var manager = staff.find(m => s.Manager === m.id);
+		// 		if (typeof manager !== 'undefined') { 
+		// 			// console.log('Manager found.')
+		// 			if (typeof manager.subordinates === 'undefined') {
+		// 				// console.log('Created sub o obj')
+		// 				manager.subordinates = {};
+		// 			}					
+		// 			manager.subordinates[s.id] = s;
+		// 			s.pushedIntoTree = true;
 		// 		}
-
-		// 		var treeIndex = -1;
-
-		// 		for (var x = 0; x < trees.length; x++) {
-		// 			for (var y = 0; y < trees[x].length; y++) {
-		// 				if (trees[x][y].id == curr.Manager) {
-		// 					treeIndex = x;
-		// 				}
-		// 			}
-		// 		}
-
-		// 		if (treeIndex != -1) {
-		// 			trees[treeIndex].push(curr);
-		// 			staff.splice(i, 1);
+		// 	}
+		// });
+		// _.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
+		// function traverse(t, s, manager) {
+		// 	// console.log(s.id, s.Manager);
+		// 	t.push(s);
+		// 	// console.log(t.length);
+		// 	if(s.subordinates) {
+		// 		for(var subKey in s.subordinates){
+		// 			traverse(t,s.subordinates[subKey], s)
+		// 			// console.log(t.length);
 		// 		}
 		// 	}
 		// }
+		// var s;
+		// for(s in staff) {
+		// 	var t = [];
+		// 	traverse(t, staff[s]);
+		// 	trees.push(t);
+		// }// end HG Optimized code
 
 		// Keep track of the position of trees / free elements
 		var allStaff = [];
@@ -356,8 +316,18 @@ function NITOrgChart(options) {
 		}
 
 		var startOffset = 0;
-		gapFillers.sort(sortByRoleAndName);
-		trees.forEach(t => t.sort(sortByRoleAndName));
+
+		var sortByLevelRoleName = (a, b) => {
+			var sortPropOrder = {
+								"Level": 1,
+								"roleOrder": 1,
+								"Name": 1
+								};
+			return sortBy(a, b, sortPropOrder);
+		};
+		gapFillers.sort(sortByLevelRoleName);
+		// trees.forEach(t => t.sort(sortByLevelRoleName));
+		var assistantsArray = [];
 		// Go through anything that's not on a tree and add it to the start
 		// Be sure to handle sublevels on overflow of MAXPERLEVEL
 		var fillersLen = gapFillers.length; // Evaluate this once, as we will be adding items to the array while we loop
@@ -373,8 +343,10 @@ function NITOrgChart(options) {
 				var assistant = gapFillers[i].Assistant;
 				assistant.SubLevel = gapFillers[i].SubLevel;
 				assistant.Level = gapFillers[i].Level;
-				assistant.pos = levelMaxPos[assistant.Level * MAXSUBLEVELS + assistant.SubLevel]++;
-				gapFillers.push(assistant);
+				assistant.Managers = [gapFillers[i]]; //HG
+				// assistant.pos = levelMaxPos[assistant.Level * MAXSUBLEVELS + assistant.SubLevel]++;
+				assistantsArray.push(assistant);
+				// gapFillers.push(assistant);
 			}
 
 			if (gapFillers[i].pos + 0.5 > startOffset) {
@@ -383,27 +355,36 @@ function NITOrgChart(options) {
 		}
 
 		centerAlignStaff(gapFillers);
-		allStaff = allStaff.concat(gapFillers);
+		//HG
+		assistantsArray.forEach((gf) => {
+			gf.pos = gf.Managers[0].pos + 1;
+		});
+		
+		allStaff = allStaff.concat(gapFillers,assistantsArray);
+
+		allStaff.forEach(as => a.pos *= 1.25);
+		//HG
+		// allStaff = allStaff.concat(gapFillers);
 
 		// Build out the trees
-		for (var i = 0; i < trees.length; i++) {
-			buildTree(trees[i]);
+		// for (var i = 0; i < trees.length; i++) {
+		// 	buildTree(trees[i]);
 
-			// Push out all items in the current tree by the minPosStart amount
-			for (var x = 0; x < trees[i].length; x++) {
-				//trees[i][x].pos += minPosStart;
-				trees[i][x].pos += startOffset;
-			}
+		// 	// Push out all items in the current tree by the minPosStart amount
+		// 	for (var x = 0; x < trees[i].length; x++) {
+		// 		//trees[i][x].pos += minPosStart;
+		// 		trees[i][x].pos += startOffset;
+		// 	}
 
-			for (var x = 0; x < trees[i].length; x++) {
-				if ((trees[i][x].pos + 0.5) > startOffset) {
-					startOffset = trees[i][x].pos + 0.5;
-				}
-			}
+		// 	for (var x = 0; x < trees[i].length; x++) {
+		// 		if ((trees[i][x].pos + 0.5) > startOffset) {
+		// 			startOffset = trees[i][x].pos + 0.5;
+		// 		}
+		// 	}
 
-			// Add back into a single array
-			allStaff = allStaff.concat(trees[i]);
-		}
+		// 	// Add back into a single array
+		// 	allStaff = allStaff.concat(trees[i]);
+		// }
 
 		return allStaff;
 	}
@@ -440,121 +421,121 @@ function NITOrgChart(options) {
 		}
 	}
 
-	function getParent(staff, curr) {
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].id == curr.Manager) {
-				return staff[i];
-			}
-		}
+	// function getParent(staff, curr) {
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].id == curr.Manager) {
+	// 			return staff[i];
+	// 		}
+	// 	}
 
-		return null;
-	}
+	// 	return null;
+	// }
 
-	function getStartingPos(staff, currStaff) {
-		// First, check the parent
-		var parent = getParent(staff, currStaff);
-		var parentPos = parent.pos - parent.childOffset;
-		// Now check the sibling
-		var largePos = -1;
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Level == currStaff.Level) {
-				if ((staff[i].pos + 1) > largePos) largePos = (staff[i].pos + 1);
-			}
-		}
+	// function getStartingPos(staff, currStaff) {
+	// 	// First, check the parent
+	// 	var parent = getParent(staff, currStaff);
+	// 	var parentPos = parent.pos - parent.childOffset;
+	// 	// Now check the sibling
+	// 	var largePos = -1;
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].Level == currStaff.Level) {
+	// 			if ((staff[i].pos + 1) > largePos) largePos = (staff[i].pos + 1);
+	// 		}
+	// 	}
 
-		return Math.max(parentPos, largePos);
-	}
+	// 	return Math.max(parentPos, largePos);
+	// }
 
-	function buildTree(staff) {
-		// Now, starting at the top of the tree, start positioning based on the children, then correct parents as needed
-		var posLeftOffset = 0;
+	// function buildTree(staff) {
+	// 	// Now, starting at the top of the tree, start positioning based on the children, then correct parents as needed
+	// 	var posLeftOffset = 0;
 
-		var minLevel = 99999;
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Level < minLevel && staff[i].Level != -1) {
-				minLevel = staff[i].Level;
-			}
-		}
+	// 	var minLevel = 99999;
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].Level < minLevel && staff[i].Level != -1) {
+	// 			minLevel = staff[i].Level;
+	// 		}
+	// 	}
 
-		for (var y = 0; y <= MAXLEVELS; y++) {
-			var currentLevelOffset = 0;
+	// 	for (var y = 0; y <= MAXLEVELS; y++) {
+	// 		var currentLevelOffset = 0;
 
-			for (var i = 0; i < staff.length; i++) {
-				var currStaff = staff[i];
+	// 		for (var i = 0; i < staff.length; i++) {
+	// 			var currStaff = staff[i];
 
-				if (currStaff.Level != y) continue;
+	// 			if (currStaff.Level != y) continue;
 
-				if (y == minLevel) {
-					// There really isn't much on this level, so just position the elements in the middle of the children below
-					var childrenCount = countMaxChildrenSameLevel(staff, currStaff.id);
-					if (childrenCount <= 1) {
-						currStaff.pos = 0;
-					} else {
-						currStaff.pos = childrenCount / 2;
-						currStaff.childOffset = childrenCount / 2;
-					}
-				} else {
-					currStaff.pos = getStartingPos(staff, currStaff);
-					traverseUpTree(staff, currStaff);
-				}
-			}
-		}
-	}
+	// 			if (y == minLevel) {
+	// 				// There really isn't much on this level, so just position the elements in the middle of the children below
+	// 				var childrenCount = countMaxChildrenSameLevel(staff, currStaff.id);
+	// 				if (childrenCount <= 1) {
+	// 					currStaff.pos = 0;
+	// 				} else {
+	// 					currStaff.pos = childrenCount / 2;
+	// 					currStaff.childOffset = childrenCount / 2;
+	// 				}
+	// 			} else {
+	// 				currStaff.pos = getStartingPos(staff, currStaff);
+	// 				traverseUpTree(staff, currStaff);
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-	function traverseUpTree(staff, currStaff) {
-		var currManagerId = currStaff.Manager;
+	// function traverseUpTree(staff, currStaff) {
+	// 	var currManagerId = currStaff.Manager;
 
-		while (currManagerId != -1) {
-			for (var i = 0; i < staff.length; i++) {
-				var curr = staff[i];
-				if (curr.id == currManagerId) {
-					// Get curr children positions
-					var smallPos = -1;
-					var largePos = 0;
-					var count = 0;
-					for (var x = 0; x < staff.length; x++) {
-						if (staff[x].Manager == currManagerId) {
-							if (staff[x].pos != -1 && (staff[x].pos < smallPos || smallPos == -1)) {
-								smallPos = staff[x].pos;
-							}
-							if (staff[x].pos != -1 && (staff[x].pos > largePos || largePos == -1)) {
-								largePos = staff[x].pos;
-							}
-							count++;
-						}
-					}
+	// 	while (currManagerId != -1) {
+	// 		for (var i = 0; i < staff.length; i++) {
+	// 			var curr = staff[i];
+	// 			if (curr.id == currManagerId) {
+	// 				// Get curr children positions
+	// 				var smallPos = -1;
+	// 				var largePos = 0;
+	// 				var count = 0;
+	// 				for (var x = 0; x < staff.length; x++) {
+	// 					if (staff[x].Manager == currManagerId) {
+	// 						if (staff[x].pos != -1 && (staff[x].pos < smallPos || smallPos == -1)) {
+	// 							smallPos = staff[x].pos;
+	// 						}
+	// 						if (staff[x].pos != -1 && (staff[x].pos > largePos || largePos == -1)) {
+	// 							largePos = staff[x].pos;
+	// 						}
+	// 						count++;
+	// 					}
+	// 				}
 
-					var prevPos = curr.pos;
+	// 				var prevPos = curr.pos;
 
-					// Update position relative to children
-					curr.pos = smallPos + (largePos - smallPos) / 2;
+	// 				// Update position relative to children
+	// 				curr.pos = smallPos + (largePos - smallPos) / 2;
 
-					// Make sure everything on the right moves over
-					var past = false;
-					for (var x = 0; x < staff.length; x++) {
-						if (past && staff[x].pos != -1 && staff[x].Level == curr.Level) {
-							staff[x].pos += curr.pos - prevPos;
-						}
-						if (staff[x].id == curr.id) {
-							past = true;
-						}
-					}
+	// 				// Make sure everything on the right moves over
+	// 				var past = false;
+	// 				for (var x = 0; x < staff.length; x++) {
+	// 					if (past && staff[x].pos != -1 && staff[x].Level == curr.Level) {
+	// 						staff[x].pos += curr.pos - prevPos;
+	// 					}
+	// 					if (staff[x].id == curr.id) {
+	// 						past = true;
+	// 					}
+	// 				}
 
-					currManagerId = curr.Manager;
-				}
-			}
-		}
-	}
+	// 				currManagerId = curr.Manager;
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-	function traverseRight(staff, currStaff) {
-		// Go through siblings on the right
+	// function traverseRight(staff, currStaff) {
+	// 	// Go through siblings on the right
 
-		for (var x = 0; x < staff.length; x++) {
-			if (staff[x].Level == curr.Level && staff[x].pos > prevPos) {
-				staff[x].pos = getStartingPos(staff, staff[x]);
-			}
-		}
-	}
+	// 	for (var x = 0; x < staff.length; x++) {
+	// 		if (staff[x].Level == curr.Level && staff[x].pos > prevPos) {
+	// 			staff[x].pos = getStartingPos(staff, staff[x]);
+	// 		}
+	// 	}
+	// }
 
 	function hasChildren(staff, id) {
 		for (var i = 0; i < staff.length; i++) {
@@ -566,32 +547,31 @@ function NITOrgChart(options) {
 		return false;
 	}
 
-	function countMaxChildrenSameLevel(staff, id) {
-		var levels = [];
+	// function countMaxChildrenSameLevel(staff, id) {
+	// 	var levels = [];
 
-		for (var i = 0; i <= MAXLEVELS; i++) {
-			levels.push(0);
-		}
+	// 	for (var i = 0; i <= MAXLEVELS; i++) {
+	// 		levels.push(0);
+	// 	}
 
-		var highestLevelCount = 0;
+	// 	var highestLevelCount = 0;
 
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Manager == id && staff[i].Level > 0) {
-				levels[staff[i].Level]++;
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].Manager == id && staff[i].Level > 0) {
+	// 			levels[staff[i].Level]++;
 
-				if (levels[staff[i].Level] > highestLevelCount) {
-					highestLevelCount = levels[staff[i].Level];
-				}
-			}
-		}
+	// 			if (levels[staff[i].Level] > highestLevelCount) {
+	// 				highestLevelCount = levels[staff[i].Level];
+	// 			}
+	// 		}
+	// 	}
 
-		return highestLevelCount;
-	}
+	// 	return highestLevelCount;
+	// }
 
 	function renderChart(staff, locationMappings, drawManagerLines) {
 		var draw = SVG(config.target);
 		var t0 = __getNow();
-
 		var fontFamily = 'PT Sans'; // for WTP, this will be PT Sans
 
 		// settings for title
@@ -629,7 +609,7 @@ function NITOrgChart(options) {
 				if (i < maxRows) {
 					i++;
 				}
-				assistantOffset[i] = 60;
+				assistantOffset[i] = config.assistantOffset;
 			}
 		});
 		assistantOffset.forEach( (ao, i) => {
@@ -651,7 +631,7 @@ function NITOrgChart(options) {
 			var x = 140 * curr.pos;
 			var y = topOffset + (200 * curr.Level) + (currSubLevelOffset * 140) + currAssistantOffset;
 			if (curr.IsAssistant) {
-				y += 60;
+				y += config.assistantOffset;
 				x -= 10;
 			}
 
@@ -736,38 +716,38 @@ function NITOrgChart(options) {
 		})
 	}
 
-	function getStaffPerLevel(staff) {
-		var staffPerLevel = [];
-		for (var i = 0; i < MAXLEVELS; i++) {
-			staffPerLevel[i] = 0;
-		}
+	// function getStaffPerLevel(staff) {
+	// 	var staffPerLevel = [];
+	// 	for (var i = 0; i < MAXLEVELS; i++) {
+	// 		staffPerLevel[i] = 0;
+	// 	}
 
-		for (var i = 0; i < staff.length; i++) {
-			staffPerLevel[staff[i].Level]++;
-		}
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		staffPerLevel[staff[i].Level]++;
+	// 	}
 
-		return staffPerLevel;
-	}
+	// 	return staffPerLevel;
+	// }
 
-	function reverseLevels(staff) {
-		var maxLevel = 0;
-		var swapLevels = [];
+	// function reverseLevels(staff) {
+	// 	var maxLevel = 0;
+	// 	var swapLevels = [];
 
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Level > maxLevel) maxLevel = staff[i].Level;
-		}
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].Level > maxLevel) maxLevel = staff[i].Level;
+	// 	}
 
-		for (var i = maxLevel; i >= 0; i--) {
-			swapLevels.push(i);
-		}
+	// 	for (var i = maxLevel; i >= 0; i--) {
+	// 		swapLevels.push(i);
+	// 	}
 
-		for (var i = 0; i < staff.length; i++) {
-			if (staff[i].Level >= 0) {
-				staff[i].Level = swapLevels[staff[i].Level];
-			}
-		}
-		return staff;
-	}
+	// 	for (var i = 0; i < staff.length; i++) {
+	// 		if (staff[i].Level >= 0) {
+	// 			staff[i].Level = swapLevels[staff[i].Level];
+	// 		}
+	// 	}
+	// 	return staff;
+	// }
 
 	function initialiseChart(staffIn, buildOptions) {
 		var def = $.Deferred();
@@ -788,16 +768,15 @@ function NITOrgChart(options) {
 		return def;
 	}
 
-	function incrLevelForManagersBy(amount, subordinate) {
-		if (Array.isArray(subordinate.Managers)) {
-			subordinate.Managers.forEach(m => {
-				m.Level += amount;
-				incrLevelForManagersBy(amount, m);
-			});
-		}
-	}
+	// function incrLevelForManagersBy(amount, subordinate) {
+	// 	if (Array.isArray(subordinate.Managers)) {
+	// 		subordinate.Managers.forEach(m => {
+	// 			m.Level += amount;
+	// 			incrLevelForManagersBy(amount, m);
+	// 		});
+	// 	}
+	// }
 
-	// function transformLevel(oldMin, oldMax, newMin, newMax, oldValue) {
 	function transformLevel(staff, property, reverse, startMin) {
 		function transform(oldMin, oldMax, newMin, newMax, oldValue) {
 			var oldRange = oldMax - oldMin;
@@ -842,20 +821,6 @@ function NITOrgChart(options) {
 			result = 0;
 		}
 		return result;
-	}
-
-	function sortByLevelDRoleName(a, b) {
-		if (a.Level !== b.Level) {
-			return b.Level - a.Level;
-		} else {
-			if (a.roleOrder !== b.roleOrder) {
-				return a.roleOrder - b.roleOrder;
-			} else {
-				if(a.Name < b.Name) return -1;
-				if(a.Name > b.Name) return 1;
-				return 0;
-			}
-		}
 	}
 
 	function TreePositioningAlgo(topNode) {
@@ -1251,8 +1216,8 @@ function NITOrgChart(options) {
 								// assistant.subordinates = subo;
 								// //remove best match from assistants managers list
 								// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
+								result = result.filter(r => r.id !== assistant.id);
 							}
-							result = result.filter(r => r.id !== assistant.id);
 						}
 
 						//for support staff
@@ -1294,11 +1259,12 @@ function NITOrgChart(options) {
 							// 	}
 							// });							
 							// this case is not handled yet
+							console.log('Multiple managers detected in tree of', bestMatch.Name);
 							result = [bestMatch];
 						} else {
 							var normalisationTree = [];
 							normaliseLevels(normalisationTree, 0, bestMatch);
-							
+							result = result.filter(r => typeof r.normalisedLevel !== 'undefined');
 							transformLevel(result, 'normalisedLevel');
 							AssignLocationIds(result, locationMappings);
 							result.sort((a, b) => {var p = {"normalisedLevel": 1}; return sortBy(a, b, p);});
@@ -1400,6 +1366,68 @@ function NITOrgChart(options) {
 		return {staff: result, treePositioned};
 	}
 
+	function buildChartNonBms(staff, locationMappings, levelRoles, managers, buildOptions) {
+		const locationSeparation = 1.5;
+		var myStaff = [].concat(staff);
+		var levelStaff = { };
+		var locationStaff = { };
+		function init() {
+			transformLevel(myStaff, "Level", true, 0);
+			AssignLocationIds(myStaff, locationMappings);
+
+			myStaff.sort((a,b) => {
+				var sortPropOrder = {
+					"locationId": 1,
+					"Level": 1,
+					"roleOrder": 1,
+					"Name": 1
+				};
+				return sortBy(a, b, sortPropOrder);
+			});
+
+			var pushIn2DArray = (inputArray, dim1, dim2, element) => {
+				if(typeof element[dim1] !== 'undefined' && typeof element[dim2] !== 'undefined') {
+					if(typeof inputArray[element[dim1]] === 'undefined') {
+						inputArray[element[dim1]] = { };
+					}
+					if(typeof inputArray[element[dim1]][element[dim2]] === 'undefined') {
+						inputArray[element[dim1]][element[dim2]] = [];
+					}
+					inputArray[element[dim1]][element[dim2]].push(element);
+				}
+			};
+
+			myStaff.forEach((s, i) => {
+				pushIn2DArray(locationStaff, 'locationId', 'Level', s);
+				pushIn2DArray(levelStaff, 'Level', 'locationId', s);
+			});
+			return {levelStaff, locationStaff};
+		}
+
+		function GetLocationMinMaxPos() {
+			var startPos = 0;
+			locationStaff.forEach((location) => {
+				location.minPos = startPos;				
+				var staffLength = [];
+				var level;				
+				for(level in location){
+					var levelStaff = location[level];
+					staffLength.push(levelStaff.length);
+				}
+				var maxLevelLength = Math.max.apply(null, staffLength);
+				if(maxLevelLength >= 15) {
+					maxLevelLength = 14;
+				}
+				if (maxLevelLength > 1 && maxLevelLength < 15) {
+					maxLevelLength--;
+				}
+				location.maxPos = startPos + maxLevelLength;
+				startPos = maxLevelLength + locationSeparation;	
+			});
+		}
+		return {init};
+	}
+
 	function buildChart(staff, locationMappings, levelRoles, managers, buildOptions) {
 		var bmsResult = {};
 		var allStaff = [];
@@ -1450,13 +1478,17 @@ function NITOrgChart(options) {
 			// not sure if any other transforms required.
 			allStaff = staff;
 		} else {
-			staff = reverseLevels(staff);
-
+			// var nonBmsFunction = buildChartNonBms(staff, locationMappings, levelRoles, managers, buildOptions);
+			// staff = reverseLevels(staff);
+			transformLevel(staff, "Level", true, 0);
 			// HG: end Modified code
 
 			// Order all staff based on role
 			// HG: more efficient Code
-			staff.sort((a,b) => a.roleOrder - b.roleOrder);
+			staff.sort((a,b) => {
+				var sortPropOrder = {"roleOrder": 1};
+				return sortBy(a, b, sortPropOrder);
+			});
 			// HG: end more efficient Code
 
 			// Separate out staff based on location
@@ -1606,10 +1638,10 @@ function Card(draw, obj, locationMappings) {
 			.move(x, y)
 			.attr({ fill: locMapping.ocl_bg });
 
-		if (obj.IsAssistant) {
-			group.line(x - 31, y + 60, x, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-			group.line(x - 30, y + 28, x - 30, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-		}
+		// if (obj.IsAssistant) {
+		// 	group.line(x - 31, y + 60, x, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+		// 	group.line(x - 30, y + 28, x - 30, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+		// }
 
 		// profile image
 		//image = group.image("profile.png", imgW, imgH).move(x + 35, y - 35);
