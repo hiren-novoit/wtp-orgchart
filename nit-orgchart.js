@@ -28,7 +28,7 @@ function NITOrgChart(options) {
 		levelsCacheList: 'Organisational Chart Roles',
 		managersCache: 'managerscache',
 		managersCacheList: 'Organisational Chart Managers',
-		assistantOffset: 140
+		assistantOffset: {y: 140, x: 55}
 	}
 
 	if (typeof (options) === 'object') {
@@ -362,7 +362,7 @@ function NITOrgChart(options) {
 		
 		allStaff = allStaff.concat(gapFillers,assistantsArray);
 
-		allStaff.forEach(as => a.pos *= 1.25);
+		allStaff.forEach(as => as.pos *= 1.25);
 		//HG
 		// allStaff = allStaff.concat(gapFillers);
 
@@ -609,7 +609,7 @@ function NITOrgChart(options) {
 				if (i < maxRows) {
 					i++;
 				}
-				assistantOffset[i] = config.assistantOffset;
+				assistantOffset[i] = config.assistantOffset.y;
 			}
 		});
 		assistantOffset.forEach( (ao, i) => {
@@ -620,19 +620,25 @@ function NITOrgChart(options) {
 		for (var i = 0; i < staff.length; i++) {
 
 			var curr = staff[i];
-			var currSubLevelOffset = 0;
-			if (typeof drawManagerLines === 'undefined' && typeof curr.SubLevelOffset !== 'undefined') {
-				currSubLevelOffset = curr.SubLevelOffset;
-			}
-			var currAssistantOffset = 0;
-			if (typeof drawManagerLines === 'undefined' && typeof curr.SubLevel !== 'undefined') {
-				currAssistantOffset = assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
-			}
+			// var currSubLevelOffset = 0;
+			// if ((typeof drawManagerLines === 'undefined' || drawManagerLines === false) && typeof curr.SubLevelOffset !== 'undefined') {
+			// 	currSubLevelOffset = curr.SubLevelOffset;
+			// }
+			// var currAssistantOffset = 0;
+			// if ((typeof drawManagerLines === 'undefined' || drawManagerLines === false) && typeof curr.SubLevel !== 'undefined') {
+			// 	currAssistantOffset = assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
+			// }
 			var x = 140 * curr.pos;
-			var y = topOffset + (200 * curr.Level) + (currSubLevelOffset * 140) + currAssistantOffset;
+			var y;
+			if (typeof drawManagerLines !== 'undefined' && drawManagerLines === true) {
+				y = topOffset + (200 * curr.Level * 1.25) + (curr.SubLevelOffset * 140) + assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
+			} else {
+				y = topOffset + (200 * curr.Level) + (curr.SubLevelOffset * 140) + assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
+			}
+			// var y = topOffset + (200 * curr.Level) + (currSubLevelOffset * 140) + currAssistantOffset;
 			if (curr.IsAssistant) {
-				y += config.assistantOffset;
-				x -= 10;
+				y += config.assistantOffset.y;
+				x -= config.assistantOffset.x;
 			}
 
 			var card = new Card(draw, curr, locationMappings);
@@ -671,18 +677,20 @@ function NITOrgChart(options) {
 			var xMod = 20;
 			var yMod = 40;
 			var photoHeight = 35;
+			var assistMod = 0;
 			var group = draw.group();
 			if (Array.isArray(rootNode.subordinates)) {
 				var leftMostSub = rootNode.subordinates[0];
 				var rightMostSub = rootNode.subordinates[rootNode.subordinates.length-1];
+				assistMod = typeof rootNode.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 				var horizontal = {
 					start: {
 						x: leftMostSub.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY
+						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
 					},
 					end: {
 						x: rightMostSub.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY
+						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
 					}
 				};
 				var vertical = {
@@ -692,7 +700,7 @@ function NITOrgChart(options) {
 					},
 					end: {
 						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY
+						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
 					}
 				}
 				group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
@@ -700,10 +708,11 @@ function NITOrgChart(options) {
 			}
 			if (Array.isArray(rootNode.Managers)) {
 				var manager = rootNode.Managers[0];
+				assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 				var verticalSub = {
 					start: {
 						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: manager.Card.y + yMod + cardHeight + midY
+						y: manager.Card.y + yMod + cardHeight + midY + assistMod -1
 					},
 					end: {
 						x: rootNode.Card.x + xMod + cardWidth/2,
@@ -729,25 +738,25 @@ function NITOrgChart(options) {
 	// 	return staffPerLevel;
 	// }
 
-	// function reverseLevels(staff) {
-	// 	var maxLevel = 0;
-	// 	var swapLevels = [];
+	function reverseLevels(staff) {
+		var maxLevel = 0;
+		var swapLevels = [];
 
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].Level > maxLevel) maxLevel = staff[i].Level;
-	// 	}
+		for (var i = 0; i < staff.length; i++) {
+			if (staff[i].Level > maxLevel) maxLevel = staff[i].Level;
+		}
 
-	// 	for (var i = maxLevel; i >= 0; i--) {
-	// 		swapLevels.push(i);
-	// 	}
+		for (var i = maxLevel; i >= 0; i--) {
+			swapLevels.push(i);
+		}
 
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].Level >= 0) {
-	// 			staff[i].Level = swapLevels[staff[i].Level];
-	// 		}
-	// 	}
-	// 	return staff;
-	// }
+		for (var i = 0; i < staff.length; i++) {
+			if (staff[i].Level >= 0) {
+				staff[i].Level = swapLevels[staff[i].Level];
+			}
+		}
+		return staff;
+	}
 
 	function initialiseChart(staffIn, buildOptions) {
 		var def = $.Deferred();
@@ -1132,7 +1141,6 @@ function NITOrgChart(options) {
 	}
 
 	function buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions) {
-		// buildReportingTree(staff);
 		var bestMatch;
 		var subordinatesTree = [];
 		var managersTree = [];
@@ -1148,7 +1156,7 @@ function NITOrgChart(options) {
 				traverse(managersTree, 'Managers', bestMatch);
 
 				result = [].concat(managersTree.filter(m => m.id !== bestMatch.id), subordinatesTree);
-////
+
 				// Role mapping
 				result.forEach(s => {
 					s.Level = -2;
@@ -1341,28 +1349,25 @@ function NITOrgChart(options) {
 							if (typeof bestMatch.Assistant !== 'undefined') {
 								var assistant = bestMatch.Assistant;
 								assistant.Level = bestMatch.Level;
-								assistant.pos = bestMatch.pos + 1;
+								assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
 								result.push(assistant);
-								result.forEach(r => {
-									r.SubLevel = 0;
-								});
 							}
 
 							//TODO something to detect and close the gap if there is lengthy gap in a single line of hierarchy
 							//TODO someting to detect if there are no leaf nodes in the location of root node
 							// why location separation did not kick in for bronte
 							result.forEach(r => {
-								r.Level *= 1.25;
+								r.SubLevel = 0;
+								r.SubLevelOffset = 0;
 							});
 						}
 					}
 				}
-////
+
 			} else {
 				result = [];
 			}
 		}
-
 		return {staff: result, treePositioned};
 	}
 
@@ -1468,7 +1473,7 @@ function NITOrgChart(options) {
 				}
 			});	
 			//HG: Remove below line only for UAT
-			staff = staff.filter(s => s.roleOrder !== null)
+			staff = staff.filter(s => s.roleOrder !== null || s.Level === -1)
 		} else {
 			bmsResult = buildChartBms(staff, locationMappings, levelRoles, managers, buildOptions);
 			staff = bmsResult.staff;
@@ -1642,6 +1647,18 @@ function Card(draw, obj, locationMappings) {
 		// 	group.line(x - 31, y + 60, x, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 		// 	group.line(x - 30, y + 28, x - 30, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 		// }
+		if(obj.IsAssistant) {
+			var horizontal = { 
+				start: {x: x, y: y + 44},
+				end: {x: x-20, y: y + 44}
+			};
+			var vertical = {
+				start: {x: x-20, y: y + 45},
+				end: {x: x-20, y: y - 52}				
+			}
+			group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+			group.line(vertical.start.x, vertical.start.y, vertical.end.x, vertical.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+		}
 
 		// profile image
 		//image = group.image("profile.png", imgW, imgH).move(x + 35, y - 35);
