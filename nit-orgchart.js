@@ -1660,6 +1660,12 @@ function Card(draw, obj, locationMappings) {
 			group.line(vertical.start.x, vertical.start.y, vertical.end.x, vertical.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 		}
 
+		if (typeof obj.isBestMatch !== 'undefined' && obj.isBestMatch === true) {
+			group.line(x, y, x, y + 87).stroke({ width: 2 }).attr({ stroke: 'black' });
+			group.line(x+120, y, x+120, y + 87).stroke({ width: 2 }).attr({ stroke: 'black' });
+			group.line(x-1, y+87, x+121, y + 87).stroke({ width: 2 }).attr({ stroke: 'black' });
+		}
+
 		// profile image
 		//image = group.image("profile.png", imgW, imgH).move(x + 35, y - 35);
 		profileImg = group.image(_spPageContextInfo.siteAbsoluteUrl
