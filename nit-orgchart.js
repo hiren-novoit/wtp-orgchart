@@ -1174,7 +1174,7 @@ function NITOrgChart(options) {
 					}
 				});
 				// Remove staff whose role can not be found;
-				result.filter(s => s.roleOrder !== null)
+				result = result.filter(s => s.roleOrder !== null);
 				// If best match is an Assistant truncate all it's subordinates
 				if (bestMatch.Level === -1) {
 					// var subIds = [];
@@ -1301,16 +1301,19 @@ function NITOrgChart(options) {
 							
 							var cStaff;
 							var pStaff;
-							var levelShift = 0;
-							for(var i=0; i < result.length; i++) {
-								cStaff = result[i];
-								if (i > 0) {
-									pStaff = result[i-1];
-									if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
-										levelShift++;
+							var levelShift = 1;
+							while (levelShift){
+								levelShift = 0;
+								for(var i=0; i < result.length; i++) {
+									cStaff = result[i];
+									if (i > 0) {
+										pStaff = result[i-1];
+										if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
+											levelShift++;
+										}
 									}
+									cStaff.Level -= levelShift;
 								}
-								cStaff.Level -= levelShift;
 							}
 							transformLevel(result, 'Level', true, 0);
 							transformLevel(result, 'pos', false, 0);
