@@ -1301,42 +1301,24 @@ function NITOrgChart(options) {
 							
 							var cStaff;
 							var pStaff;
-							var levelShift = 1;
-							while (levelShift){
-								levelShift = 0;
-								for(var i=0; i < result.length; i++) {
-									cStaff = result[i];
-									if (i > 0) {
-										pStaff = result[i-1];
-										if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
-											levelShift++;
-										}
+							var levelShift = 0;
+							for(var i=0; i < result.length; i++) {
+								cStaff = result[i];
+								if (i > 0) {
+									pStaff = result[i-1];
+									if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
+										levelShift--;
 									}
-									cStaff.Level -= levelShift;
+									if(pStaff.Level-cStaff.Level > 1) {
+										levelShift += (pStaff.Level-cStaff.Level-1);
+									}
 								}
+								cStaff.levelShift = levelShift;
 							}
+							result.forEach(r => r.Level += r.levelShift);
 							transformLevel(result, 'Level', true, 0);
 							transformLevel(result, 'pos', false, 0);
 
-							// Assign start and end position for locations where nodes are based
-							// result.forEach(r => {
-							// 	var lm = locationMappings[r.locationId];
-							// 	if (lm) {
-							// 		var StartPos = 99999;
-							// 		var EndPos = 0;
-
-							// 		if (typeof lm.StartPos !== 'undefined') {
-							// 			StartPos = lm.StartPos;
-							// 		}
-
-							// 		if (typeof lm.EndPos !== 'undefined') {
-							// 			EndPos = lm.EndPos;
-							// 		}
-
-							// 		lm.StartPos = Math.min(StartPos, r.pos);
-							// 		lm.EndPos = Math.max(EndPos, r.pos);
-							// 	}
-							// });
 							var inResultLocations = _.uniq(result.map(r => r.locationId));
 							inResultLocations.forEach(lid => {
 								var staffInLoc = result.filter(r => r.locationId === lid).sort((a, b) => {
@@ -1356,7 +1338,6 @@ function NITOrgChart(options) {
 								result.push(assistant);
 							}
 
-							//TODO something to detect and close the gap if there is lengthy gap in a single line of hierarchy
 							//TODO someting to detect if there are no leaf nodes in the location of root node
 							// why location separation did not kick in for bronte
 							result.forEach(r => {
@@ -1557,7 +1538,6 @@ function NITOrgChart(options) {
 
 						currStaff[i].SubLevelOffset = subLevelOffset + currStaff[i].SubLevel;
 					}
-
 					subLevelOffset += currMaxSubLevel;
 				}
 
