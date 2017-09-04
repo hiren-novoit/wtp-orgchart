@@ -145,7 +145,6 @@ function NITOrgChart(options) {
 	function traverse(t, direction, current, staff) {
 		// console.log(current.id, current.prev);
 		// console.log(t.length);
-		// if (typeof current.traversed === 'undefined') {
 		var alreadyTraversed = t.find(n => n.id === current.id);
 		var inStaffArray = true;
 		if (staff) {
@@ -162,7 +161,6 @@ function NITOrgChart(options) {
 			}
 		}
 		// 	current.traversed = true;
-		// }
 	}
 
 	function normaliseLevels(t, level, current) {
@@ -240,26 +238,6 @@ function NITOrgChart(options) {
 			}
 		}
 
-		// Fix staff whose manager doesn't exist in the current context (Remove their manager)
-		// Fix staff whose manager is on the same or lower level as them (Remove their manager)
-		// for (var i = 0; i < staff.length; i++) {
-		// 	if (staff[i].Manager != -1) {
-		// 		var parent = getParent(staff, staff[i]);
-
-		// 		if (parent == null || parent.Level >= staff[i].Level) staff[i].Manager = -1;
-		// 	}
-		// }
-
-		// var overlay = [];
-
-		// // All staff that have a negative level are actually to be laid over the top next to the exec's later.
-		// for (var i = staff.length - 1; i >= 0; i--) {
-		// 	if (staff[i].Level == -1) {
-		// 		overlay.push(staff[i]);
-		// 		staff.splice(i, 1);
-		// 	}
-		// }
-
 		// First move all staff who have no parent or children out of the way (no relationship groups to care about)
 		// Also anyone on the bottom level, don't put them in thier own trees - just group them with the rest
 		for (var i = staff.length - 1; i >= 0; i--) {
@@ -268,44 +246,6 @@ function NITOrgChart(options) {
 				staff.splice(i, 1);
 			}
 		}
-
-		// Separate out all of the trees
-		// var trees = [];
-		// HG Optimized code
-		// find & push staff in subordinates property of the manager
-		// staff.forEach((s) => {
-		// 	// console.log(s.id, s.Manager);
-		// 	if(s.Manager !== -1) {
-		// 		var manager = staff.find(m => s.Manager === m.id);
-		// 		if (typeof manager !== 'undefined') { 
-		// 			// console.log('Manager found.')
-		// 			if (typeof manager.subordinates === 'undefined') {
-		// 				// console.log('Created sub o obj')
-		// 				manager.subordinates = {};
-		// 			}					
-		// 			manager.subordinates[s.id] = s;
-		// 			s.pushedIntoTree = true;
-		// 		}
-		// 	}
-		// });
-		// _.remove(staff, (s) => typeof s.pushedIntoTree !== 'undefined');
-		// function traverse(t, s, manager) {
-		// 	// console.log(s.id, s.Manager);
-		// 	t.push(s);
-		// 	// console.log(t.length);
-		// 	if(s.subordinates) {
-		// 		for(var subKey in s.subordinates){
-		// 			traverse(t,s.subordinates[subKey], s)
-		// 			// console.log(t.length);
-		// 		}
-		// 	}
-		// }
-		// var s;
-		// for(s in staff) {
-		// 	var t = [];
-		// 	traverse(t, staff[s]);
-		// 	trees.push(t);
-		// }// end HG Optimized code
 
 		// Keep track of the position of trees / free elements
 		var allStaff = [];
@@ -326,7 +266,6 @@ function NITOrgChart(options) {
 			return sortBy(a, b, sortPropOrder);
 		};
 		gapFillers.sort(sortByLevelRoleName);
-		// trees.forEach(t => t.sort(sortByLevelRoleName));
 		var assistantsArray = [];
 		// Go through anything that's not on a tree and add it to the start
 		// Be sure to handle sublevels on overflow of MAXPERLEVEL
@@ -344,9 +283,7 @@ function NITOrgChart(options) {
 				assistant.SubLevel = gapFillers[i].SubLevel;
 				assistant.Level = gapFillers[i].Level;
 				assistant.Managers = [gapFillers[i]]; //HG
-				// assistant.pos = levelMaxPos[assistant.Level * MAXSUBLEVELS + assistant.SubLevel]++;
 				assistantsArray.push(assistant);
-				// gapFillers.push(assistant);
 			}
 
 			if (gapFillers[i].pos + 0.5 > startOffset) {
@@ -363,28 +300,6 @@ function NITOrgChart(options) {
 		allStaff = allStaff.concat(gapFillers,assistantsArray);
 
 		allStaff.forEach(as => as.pos *= 1.25);
-		//HG
-		// allStaff = allStaff.concat(gapFillers);
-
-		// Build out the trees
-		// for (var i = 0; i < trees.length; i++) {
-		// 	buildTree(trees[i]);
-
-		// 	// Push out all items in the current tree by the minPosStart amount
-		// 	for (var x = 0; x < trees[i].length; x++) {
-		// 		//trees[i][x].pos += minPosStart;
-		// 		trees[i][x].pos += startOffset;
-		// 	}
-
-		// 	for (var x = 0; x < trees[i].length; x++) {
-		// 		if ((trees[i][x].pos + 0.5) > startOffset) {
-		// 			startOffset = trees[i][x].pos + 0.5;
-		// 		}
-		// 	}
-
-		// 	// Add back into a single array
-		// 	allStaff = allStaff.concat(trees[i]);
-		// }
 
 		return allStaff;
 	}
@@ -421,122 +336,6 @@ function NITOrgChart(options) {
 		}
 	}
 
-	// function getParent(staff, curr) {
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].id == curr.Manager) {
-	// 			return staff[i];
-	// 		}
-	// 	}
-
-	// 	return null;
-	// }
-
-	// function getStartingPos(staff, currStaff) {
-	// 	// First, check the parent
-	// 	var parent = getParent(staff, currStaff);
-	// 	var parentPos = parent.pos - parent.childOffset;
-	// 	// Now check the sibling
-	// 	var largePos = -1;
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].Level == currStaff.Level) {
-	// 			if ((staff[i].pos + 1) > largePos) largePos = (staff[i].pos + 1);
-	// 		}
-	// 	}
-
-	// 	return Math.max(parentPos, largePos);
-	// }
-
-	// function buildTree(staff) {
-	// 	// Now, starting at the top of the tree, start positioning based on the children, then correct parents as needed
-	// 	var posLeftOffset = 0;
-
-	// 	var minLevel = 99999;
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].Level < minLevel && staff[i].Level != -1) {
-	// 			minLevel = staff[i].Level;
-	// 		}
-	// 	}
-
-	// 	for (var y = 0; y <= MAXLEVELS; y++) {
-	// 		var currentLevelOffset = 0;
-
-	// 		for (var i = 0; i < staff.length; i++) {
-	// 			var currStaff = staff[i];
-
-	// 			if (currStaff.Level != y) continue;
-
-	// 			if (y == minLevel) {
-	// 				// There really isn't much on this level, so just position the elements in the middle of the children below
-	// 				var childrenCount = countMaxChildrenSameLevel(staff, currStaff.id);
-	// 				if (childrenCount <= 1) {
-	// 					currStaff.pos = 0;
-	// 				} else {
-	// 					currStaff.pos = childrenCount / 2;
-	// 					currStaff.childOffset = childrenCount / 2;
-	// 				}
-	// 			} else {
-	// 				currStaff.pos = getStartingPos(staff, currStaff);
-	// 				traverseUpTree(staff, currStaff);
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// function traverseUpTree(staff, currStaff) {
-	// 	var currManagerId = currStaff.Manager;
-
-	// 	while (currManagerId != -1) {
-	// 		for (var i = 0; i < staff.length; i++) {
-	// 			var curr = staff[i];
-	// 			if (curr.id == currManagerId) {
-	// 				// Get curr children positions
-	// 				var smallPos = -1;
-	// 				var largePos = 0;
-	// 				var count = 0;
-	// 				for (var x = 0; x < staff.length; x++) {
-	// 					if (staff[x].Manager == currManagerId) {
-	// 						if (staff[x].pos != -1 && (staff[x].pos < smallPos || smallPos == -1)) {
-	// 							smallPos = staff[x].pos;
-	// 						}
-	// 						if (staff[x].pos != -1 && (staff[x].pos > largePos || largePos == -1)) {
-	// 							largePos = staff[x].pos;
-	// 						}
-	// 						count++;
-	// 					}
-	// 				}
-
-	// 				var prevPos = curr.pos;
-
-	// 				// Update position relative to children
-	// 				curr.pos = smallPos + (largePos - smallPos) / 2;
-
-	// 				// Make sure everything on the right moves over
-	// 				var past = false;
-	// 				for (var x = 0; x < staff.length; x++) {
-	// 					if (past && staff[x].pos != -1 && staff[x].Level == curr.Level) {
-	// 						staff[x].pos += curr.pos - prevPos;
-	// 					}
-	// 					if (staff[x].id == curr.id) {
-	// 						past = true;
-	// 					}
-	// 				}
-
-	// 				currManagerId = curr.Manager;
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// function traverseRight(staff, currStaff) {
-	// 	// Go through siblings on the right
-
-	// 	for (var x = 0; x < staff.length; x++) {
-	// 		if (staff[x].Level == curr.Level && staff[x].pos > prevPos) {
-	// 			staff[x].pos = getStartingPos(staff, staff[x]);
-	// 		}
-	// 	}
-	// }
-
 	function hasChildren(staff, id) {
 		for (var i = 0; i < staff.length; i++) {
 			if (staff[i].Manager == id) {
@@ -546,28 +345,6 @@ function NITOrgChart(options) {
 
 		return false;
 	}
-
-	// function countMaxChildrenSameLevel(staff, id) {
-	// 	var levels = [];
-
-	// 	for (var i = 0; i <= MAXLEVELS; i++) {
-	// 		levels.push(0);
-	// 	}
-
-	// 	var highestLevelCount = 0;
-
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		if (staff[i].Manager == id && staff[i].Level > 0) {
-	// 			levels[staff[i].Level]++;
-
-	// 			if (levels[staff[i].Level] > highestLevelCount) {
-	// 				highestLevelCount = levels[staff[i].Level];
-	// 			}
-	// 		}
-	// 	}
-
-	// 	return highestLevelCount;
-	// }
 
 	function renderChart(staff, locationMappings, drawManagerLines) {
 		var draw = SVG(config.target);
@@ -620,14 +397,6 @@ function NITOrgChart(options) {
 		for (var i = 0; i < staff.length; i++) {
 
 			var curr = staff[i];
-			// var currSubLevelOffset = 0;
-			// if ((typeof drawManagerLines === 'undefined' || drawManagerLines === false) && typeof curr.SubLevelOffset !== 'undefined') {
-			// 	currSubLevelOffset = curr.SubLevelOffset;
-			// }
-			// var currAssistantOffset = 0;
-			// if ((typeof drawManagerLines === 'undefined' || drawManagerLines === false) && typeof curr.SubLevel !== 'undefined') {
-			// 	currAssistantOffset = assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
-			// }
 			var x = 140 * curr.pos;
 			var y;
 			if (typeof drawManagerLines !== 'undefined' && drawManagerLines === true) {
@@ -635,7 +404,6 @@ function NITOrgChart(options) {
 			} else {
 				y = topOffset + (200 * curr.Level) + (curr.SubLevelOffset * 140) + assistantOffset[curr.Level * MAXLEVELS + curr.SubLevel];
 			}
-			// var y = topOffset + (200 * curr.Level) + (currSubLevelOffset * 140) + currAssistantOffset;
 			if (curr.IsAssistant) {
 				y += config.assistantOffset.y;
 				x -= config.assistantOffset.x;
@@ -725,19 +493,6 @@ function NITOrgChart(options) {
 		})
 	}
 
-	// function getStaffPerLevel(staff) {
-	// 	var staffPerLevel = [];
-	// 	for (var i = 0; i < MAXLEVELS; i++) {
-	// 		staffPerLevel[i] = 0;
-	// 	}
-
-	// 	for (var i = 0; i < staff.length; i++) {
-	// 		staffPerLevel[staff[i].Level]++;
-	// 	}
-
-	// 	return staffPerLevel;
-	// }
-
 	function reverseLevels(staff) {
 		var maxLevel = 0;
 		var swapLevels = [];
@@ -776,15 +531,6 @@ function NITOrgChart(options) {
 
 		return def;
 	}
-
-	// function incrLevelForManagersBy(amount, subordinate) {
-	// 	if (Array.isArray(subordinate.Managers)) {
-	// 		subordinate.Managers.forEach(m => {
-	// 			m.Level += amount;
-	// 			incrLevelForManagersBy(amount, m);
-	// 		});
-	// 	}
-	// }
 
 	function transformLevel(staff, property, reverse, startMin) {
 		function transform(oldMin, oldMax, newMin, newMax, oldValue) {
@@ -834,7 +580,6 @@ function NITOrgChart(options) {
 
 	function TreePositioningAlgo(topNode) {
 		var prevNode;
-		// var levelZeroPtr = staff[0];
 		var xTopAdjustment;
 		var yTopAdjustment;
 		var levelSeparation = 1.25;
@@ -904,10 +649,6 @@ function NITOrgChart(options) {
 				//Do the preliminary positioning with a postorder walk
 				FirstWalk(node);
 
-				// xTopAdjustment = node.pos - node.prelim;
-				// yTopAdjustment = node.ypos;
-
-				// return SecondWalk(node, 0);
 				return true;
 			} else {
 				return false;
@@ -915,9 +656,6 @@ function NITOrgChart(options) {
 		}
 
 		function FirstWalk(node, leftTreePrelim) {
-			// var leftNeighbor = node.leftNeighborAtLevel;
-			// SetPrevNodeAtLevel(node.normalisedLevel, node);
-			// node.modifier = 0;
 			var prelim;
 			if (node.isLeafNode || node.normalisedLevel === maxDepth) {
 				if (node.left) {
@@ -930,7 +668,6 @@ function NITOrgChart(options) {
 					}
 					node.prelim = prelim + siblingSeparation + MeanNodeSize(node.left, node); // RM
 					node.pos = node.prelim;
-					// node.prelim = node.left.prelim + siblingSeparation + MeanNodeSize(node.left, node);
 					return node.prelim;
 				} else {
 					if (typeof leftTreePrelim !== 'undefined') {
@@ -955,24 +692,6 @@ function NITOrgChart(options) {
 				}
 				node.prelim = leftMost.prelim + (rightMost.prelim - leftMost.prelim) / 2;
 				node.pos = node.prelim;
-				// var midPoint = leftMost.prelim + rightMost.prelim/2;
-				// if(node.left) {
-				// 	// if (typeof leftTreePrelim !== 'undefined') {
-				// 	// 	prelim = Math.max(node.left.prelim, leftTreePrelim); //RM
-				// 	// } else {
-				// 	// 	prelim = node.left.prelim;
-				// 	// }
-				// 	node.prelim = node.left.prelim + siblingSeparation + MeanNodeSize(node.left, node);
-				// 	node.modifier = node.prelim - midPoint;
-				// 	Apportion(node);
-				// } else {
-				// 	// if (typeof leftTreePrelim !== 'undefined') {
-				// 	// 	prelim = leftTreePrelim; //RM
-				// 	// } else {
-				// 	// 	prelim = 0;
-				// 	// }
-				// 	node.prelim = midPoint;
-				// }
 				return rightMost.prelim;
 			}
 		}
@@ -1019,7 +738,6 @@ function NITOrgChart(options) {
 				var ancestorLeftMost = leftMost;
 				var ancestorNeighbor = neighbor;
 				// TODO not sure if until means < or <= depends on debugging result
-				// for(var i=0; i <= compareDepth; i++) {
 				for(var i=0; i < compareDepth; i++) {
 					ancestorLeftMost = ancestorLeftMost.Managers[0];
 					ancestorNeighbor = ancestorNeighbor.Managers[0];
@@ -1090,26 +808,10 @@ function NITOrgChart(options) {
 		}
 
 		function MeanNodeSize(leftNode, rightNode) {
-			// var nodeSize = 0;
-			
-			// if (leftNode) {
-			// 	// nodeSize += RightSize(leftNode);
-			// 	nodeSize += 1;
-			// }
-			// if (rightNode) {
-			// 	// nodeSize += LeftSize(rightNode);
-			// 	nodeSize += 1;
-			// }
-			// return nodeSize;
 			return 0;
 		}
 
 		function CheckExtentStrange(xValue, yValue) {
-			// if xValue is a valid value for the x-Coordinates and 
-			// 	yValue is a valid value for the y-Coordinates then 
-			// 	return true
-			// else 
-			// 	return false
 			return true;
 		}
 
@@ -1177,9 +879,6 @@ function NITOrgChart(options) {
 				result = result.filter(s => s.roleOrder !== null);
 				// If best match is an Assistant truncate all it's subordinates
 				if (bestMatch.Level === -1) {
-					// var subIds = [];
-					// subIds = subordinatesTree.map(sb => sb.id);
-					// staff = staff.filter(s => subIds.indexOf(s.id) < 0);
 					var ms = bestMatch.Managers;				
 					if (Array.isArray(ms)) {
 						bestMatch.subordinates = undefined;
@@ -1191,7 +890,6 @@ function NITOrgChart(options) {
 					} else {
 						result = [bestMatch];
 					}
-					// buildOptions.bestMatchSearch = false;
 				} else {
 					// when best match is not an assistant
 					// and
@@ -1221,9 +919,6 @@ function NITOrgChart(options) {
 								assistant.Managers = undefined;
 								assistant.IsAssistant = true;
 								bestMatch.Assistant = jQuery.extend(true, {}, assistant);
-								// assistant.subordinates = subo;
-								// //remove best match from assistants managers list
-								// assistant.Managers = ms.filter(m => m.id === bestMatch.id);
 								result = result.filter(r => r.id !== assistant.id);
 							}
 						}
@@ -1234,7 +929,6 @@ function NITOrgChart(options) {
 						}
 
 						// TODO: Remove assistants till figure out multiple managers case...
-						// staff = staff.filter(s => s.id === assistant.id || s.Level !== -1);
 						result = result.filter(s => s.Level !== -1);
 						
 						result.forEach(s => s.subordinates = undefined);
@@ -1242,30 +936,7 @@ function NITOrgChart(options) {
 
 						var withMultipleMs = result.find(s => {return Array.isArray(s.Managers)  && s.Managers.length > 1});
 
-						if (withMultipleMs) {
-							// old code below if helpful somehow
-							// result.forEach(s => {
-							// 	if (Array.isArray(s.Managers)) {
-							// 		if(s.Managers.length > 1){
-							// 			s.Managers.sort( (a, b) => {
-							// 				var x = (a.Level * 10 + a.roleOrder);
-							// 				var y =  (b.Level * 10 + b.roleOrder);
-							// 				if (x !== y) {
-							// 					return y - x;
-							// 				} else {
-							// 					if(a.Name < b.Name) return 1;
-							// 					if(a.Name > b.Name) return -1;
-							// 					return 0;												}
-							// 			});
-							// 			s.Managers.forEach((m, i) => {
-							// 				if (i > 0) {
-							// 					m.OtherManager = true;
-							// 				}
-							// 			});
-							// 		}
-							// 		s.Manager = s.Managers[0].id;
-							// 	}
-							// });							
+						if (withMultipleMs) {					
 							// this case is not handled yet
 							console.log('Multiple managers detected in tree of', bestMatch.Name);
 							result = [bestMatch];
@@ -1467,8 +1138,6 @@ function NITOrgChart(options) {
 			// not sure if any other transforms required.
 			allStaff = staff;
 		} else {
-			// var nonBmsFunction = buildChartNonBms(staff, locationMappings, levelRoles, managers, buildOptions);
-			// staff = reverseLevels(staff);
 			transformLevel(staff, "Level", true, 0);
 			// HG: end Modified code
 
@@ -1554,13 +1223,7 @@ function NITOrgChart(options) {
 		}
 
 		renderChart(allStaff, locationMappings, bmsResult.treePositioned);
-
-		// if (bestMatch) {
-		// 	var bmCard = {x: bestMatch.Card.x, y: bestMatch.Card.y};
-		// 	return bmCard;
-		// }
 	}
-
 	self.initialiseChart = initialiseChart;
 
 	return self;
@@ -1613,7 +1276,6 @@ function Card(draw, obj, locationMappings) {
 		var x = self.x + 20;
 		var y = self.y + 40;
 
-		//requestAnimationFrame(function () {
 		// container!
 		group = draw.group()
 
@@ -1626,10 +1288,6 @@ function Card(draw, obj, locationMappings) {
 			.move(x, y)
 			.attr({ fill: locMapping.ocl_bg });
 
-		// if (obj.IsAssistant) {
-		// 	group.line(x - 31, y + 60, x, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-		// 	group.line(x - 30, y + 28, x - 30, y + 60).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-		// }
 		if(obj.IsAssistant) {
 			var horizontal = { 
 				start: {x: x, y: y + 44},
@@ -1650,7 +1308,6 @@ function Card(draw, obj, locationMappings) {
 		}
 
 		// profile image
-		//image = group.image("profile.png", imgW, imgH).move(x + 35, y - 35);
 		profileImg = group.image(_spPageContextInfo.siteAbsoluteUrl
 			+ "/style library/nit.intranet/img/profile-placeholder.png?RenditionID=6", imgW, imgH).move(x + 35, y - 35);
 		image = group.image(_spPageContextInfo.siteAbsoluteUrl
@@ -1761,23 +1418,7 @@ function Card(draw, obj, locationMappings) {
 				}
 			}
 		});
-		/*
-					group.on('mouseover', function (e) {
-						if ($(group.node).find(e.fromElement).length == 0) {
-							//window.console && console.log('mouseover', arguments);
-							rect.animate(100, '<>').fill('#ffc423')
-						}
-					})
-		
-					group.on('mouseout', function (e) {
-						if ($(group.node).find(e.toElement).length == 0) {
-							//window.console && console.log('mouseout', arguments);
-							rect.animate(100, '<>').fill(self.getLocationMapping(obj.Location))
-						}
-					})
-		*/
 		self.isDrawn = true;
-		//})        
 	}
 
 	//# REMOVE
