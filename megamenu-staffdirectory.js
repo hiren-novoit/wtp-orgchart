@@ -65,7 +65,7 @@ var MMStaffDirectory = function(options) {
         $frag.append(
             '<div class="search-box">' +
                 'Enter Search Keywords: <input type="text" placeholder="Name, Role, Location, Sector, Skill" class="search-input" />' +
-                '<input type="button" href="#" onclick="javascript:void(0);" class="search-button" value="Search" />' +
+                // '<input type="button" href="#" onclick="javascript:void(0);" class="search-button" value="Search" />' +
             '</div>'
         );
 
