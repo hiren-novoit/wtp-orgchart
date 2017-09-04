@@ -119,17 +119,18 @@ var MMStaffDirectory = function(options) {
         }
 
         var $s1cont = buildDropDown('Location', search_locations, 'location');
-        var $s2cont = buildDropDown('Role', search_roles, 'roles');
         var $s3cont = buildDropDown('Sector', search_sectors, 'sectors');
         var $s4cont = buildDropDown('Skill', search_skills, 'skills');
         var $s5cont = buildDropDown('Function', search_functions, 'functions');
-
+        var $s2cont = buildDropDown('Role', search_roles, 'roles');
+        $s2cont.css('width', '100%');
+        
         $frag2 = $('<div class="search-additional-filters"></div>');
         $frag2.append($s1cont);
-        $frag2.append($s2cont);
         $frag2.append($s3cont);
         $frag2.append($s4cont);
         $frag2.append($s5cont);
+        $frag2.append($s2cont);
         $frag2.append('<br />');
 
         $frag.append($frag2);
