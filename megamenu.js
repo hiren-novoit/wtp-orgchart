@@ -183,12 +183,19 @@ var MEGAMENU = function(options) {
 
 	//# BIND EVENTS
 	function bindEvents() {
-		self.target.on('mouseenter', '.menu-top', function(e) {
+		self.target.on('click', '.menu-top.has-child', function(e) {
+			var $targetParent = $(e.target.parentElement);			
+			if ($targetParent.hasClass('menu-top') && !$targetParent.siblings().hasClass('is-locked')) {
+				var $this = $(this);
+				$this.toggleClass('is-locked');	
+			}
+		});
+		self.target.on('mouseenter', '.menu-top', function(e) {			
 			var $this = $(this);
 
 			if ($this.find('.menu-children').length > 0) {
 				setTimeout(function() {
-					if ($this.is(':hover')) {
+					if ($this.is(':hover') && !$this.siblings().hasClass('is-locked')) {
 						$('html').addClass('megamenu-hover');
                         $this.addClass('is-hover');
 					}

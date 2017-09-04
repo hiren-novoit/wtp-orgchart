@@ -540,6 +540,10 @@ position:relative;
 	text-decoration: none;
 }
 
+.megamenu .menu-top.is-locked > a {
+	background-color: #7ca5d0;
+}
+
 .megamenu .menu-top.first-child > a {
 	background-color: #FFFFFF;
 	text-transform: uppercase;
@@ -579,7 +583,8 @@ position:relative;
 }
 
 /*.megamenu:not(.is-collapsed) .menu-top:hover .menu-children {*/
-.megamenu:not(.is-collapsed) .menu-top.is-hover .menu-children {
+.megamenu:not(.is-collapsed) .menu-top.is-hover .menu-children,
+.megamenu:not(.is-collapsed) .menu-top.is-locked .menu-children {
     max-height: 65vh;
     max-height: calc(100vh - 150px);
     overflow: auto;
@@ -597,7 +602,8 @@ position:relative;
 }
 
 /*.megamenu .menu-top:hover .menu-children {*/
-.megamenu .menu-top.is-hover .menu-children {
+.megamenu .menu-top.is-hover .menu-children,
+.megamenu .menu-top.is-locked .menu-children {
 	top: 100%;
 	transform: translateY(0px);
 	opacity: 1;
