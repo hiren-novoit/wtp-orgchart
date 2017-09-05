@@ -91,35 +91,36 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
     }
 
     // init SVG pan zoom
-    function initPanZoom(card) {
-        // enable panning and zooming
-		svgPanZoomer = svgPanZoom('#OrgChart > svg', {
-			viewportSelector: '.svg-pan-zoom_viewport',
-			panEnabled: true,
-			controlIconsEnabled: true,
-			zoomEnabled: true,
-			dblClickZoomEnabled: true,
-			mouseWheelZoomEnabled: true,
-			preventMouseEventsDefault: false,
-			zoomScaleSensitivity: 0.2,
-			minZoom: 1,
-			maxZoom: 50,
-			fit: true,
-			contain: false,
-			center: false,
-			refreshRate: 'auto',
-			beforeZoom: function () { },
-			onZoom: function () { },
-			beforePan: function () { },
-			onPan: function () { },
-			onUpdatedCTM: function () { }
-		});
+    function initPanZoom(init) {
+		if (typeof init === 'undefined') {
+			init = true;
+		}
+		
+		if (init) {
+			// enable panning and zooming
+			svgPanZoomer = svgPanZoom('#OrgChart > svg', {
+				viewportSelector: '.svg-pan-zoom_viewport',
+				panEnabled: true,
+				controlIconsEnabled: true,
+				zoomEnabled: true,
+				dblClickZoomEnabled: true,
+				mouseWheelZoomEnabled: true,
+				preventMouseEventsDefault: false,
+				zoomScaleSensitivity: 0.2,
+				minZoom: 1,
+				maxZoom: 50,
+				fit: true,
+				contain: false,
+				center: false,
+				refreshRate: 'auto',
+				beforeZoom: function () { },
+				onZoom: function () { },
+				beforePan: function () { },
+				onPan: function () { },
+				onUpdatedCTM: function () { }
+			});
 
-		window._svgPanZoomer = svgPanZoomer;
-		if (card) {
-			var panPoint = {x: -1 * card.x, y: -1 * card.y} ;
-			window._svgPanZoomer.realzoom(1, panPoint, true);
-		} else {
+			window._svgPanZoomer = svgPanZoomer;
 			window._svgPanZoomer.realzoom(0.5, {x:0, y:0}, true);
 		}
     }
@@ -220,8 +221,8 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 			options = props.options;
 		}
 		// Initialise the org chart with the staff
-		self.orgChart.initialiseChart(dataset_processed, options).done(function(bmCard) {
-			initPanZoom(bmCard);
+		self.orgChart.initialiseChart(dataset_processed, options).done(function(result) {
+			initPanZoom(result);
 			def.resolve();
 		});
     }

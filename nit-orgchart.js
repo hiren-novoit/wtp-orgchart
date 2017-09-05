@@ -28,7 +28,7 @@ function NITOrgChart(options) {
 		levelsCacheList: 'Organisational Chart Roles',
 		managersCache: 'managerscache',
 		managersCacheList: 'Organisational Chart Managers',
-		assistantOffset: {y: 140, x: 55}
+		assistantOffset: {y: 140, x: 70}
 	}
 
 	if (typeof (options) === 'object') {
@@ -525,8 +525,8 @@ function NITOrgChart(options) {
 		var managers = getManagers();
 
 		$.when(levelRoles, locationMappings, managers).then(function (levels, locations, managers) {
-			var bmCard = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
-			def.resolve(bmCard);
+			var result = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
+			def.resolve(result);
 		});
 
 		return def;
@@ -856,7 +856,6 @@ function NITOrgChart(options) {
 
 				traverse(subordinatesTree, 'subordinates', bestMatch);
 				traverse(managersTree, 'Managers', bestMatch);
-
 				result = [].concat(managersTree.filter(m => m.id !== bestMatch.id), subordinatesTree);
 
 				// Role mapping
@@ -874,9 +873,70 @@ function NITOrgChart(options) {
 					} else {
 						console.log('User ' + s.Name + ' does not have any role assigned.')
 					}
-				});
+
+					if (s.Level === -1 && Array.isArray(s.Managers)) {
+						var subo = s.subordinates;
+						var ms = s.Managers;
+						s.subordinates = undefined;
+						s.Managers = undefined;
+						ms.forEach(mFrmA => {
+							var manager = staff.find(m => m.id == mFrmA.id);
+							if (manager) {
+								manager.Assistant = jQuery.extend(true, {}, s);
+								manager.Assistant.IsAssistant = true;
+							}
+						});
+						s.subordinates = subo;
+						s.Managers = ms;
+					}
+				});				
 				// Remove staff whose role can not be found;
 				result = result.filter(s => s.roleOrder !== null);
+
+				// Assign assistants to managers
+				managersTree.forEach(m => {
+					if (m.id !== bestMatch.id && Array.isArray(m.subordinates)) {
+						var assistant = m.subordinates.find(sb => sb.Level === -1);
+						if (typeof assistant === 'undefined') {
+							m.subordinates.forEach(s => {
+								if (typeof s.Level === 'undefined' || s.Level === "") {
+									s.Level = -2;
+									s.roleOrder = null;
+									if (s.Role) {
+										var roleObj = levelRoles.find(r => r.Title.toLowerCase().trim() === s.Role.toLowerCase().trim());
+										if (roleObj) {
+											s.Level = +roleObj.ocr_level;
+											s.roleOrder = +roleObj.ocr_order;
+										} else {
+											console.log( 'Can not find role: '+s.Role+' for user '  + s.Name)
+										}
+									} else {
+										console.log('User ' + s.Name + ' does not have any role assigned.')
+									}
+				
+									if (s.Level === -1 && Array.isArray(s.Managers)) {
+										assistant = s;
+									}										
+								}
+							});								
+						}
+
+						if (typeof assistant !== 'undefined') {
+							// add assistant
+							var subo = assistant.subordinates;
+							var ms = assistant.Managers;
+							assistant.subordinates = undefined;
+							assistant.Managers = undefined;
+
+							m.Assistant = jQuery.extend(true, {}, assistant);
+							m.Assistant.IsAssistant = true;
+					
+							assistant.subordinates = subo;
+							assistant.Managers = ms;
+						}
+					}
+				});
+				
 				// If best match is an Assistant truncate all it's subordinates
 				if (bestMatch.Level === -1) {
 					var ms = bestMatch.Managers;				
@@ -908,20 +968,20 @@ function NITOrgChart(options) {
 							) {						
 						result = [bestMatch];
 					} else {
-						if (Array.isArray(bestMatch.subordinates)) {
-							// find assistant for best match if bm is not assistant or support staff
-							var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
-							if (assistant) {
-								// below dirty coding to solve too much recursion issue
-								var subo = assistant.subordinates;
-								var ms = assistant.Managers;
-								assistant.subordinates = undefined;
-								assistant.Managers = undefined;
-								assistant.IsAssistant = true;
-								bestMatch.Assistant = jQuery.extend(true, {}, assistant);
-								result = result.filter(r => r.id !== assistant.id);
-							}
-						}
+						// if (Array.isArray(bestMatch.subordinates)) {
+						// 	// find assistant for best match if bm is not assistant or support staff
+						// 	var assistant = bestMatch.subordinates.find(sb => sb.Level === -1);
+						// 	if (assistant) {
+						// 		// below dirty coding to solve too much recursion issue
+						// 		var subo = assistant.subordinates;
+						// 		var ms = assistant.Managers;
+						// 		assistant.subordinates = undefined;
+						// 		assistant.Managers = undefined;
+						// 		assistant.IsAssistant = true;
+						// 		bestMatch.Assistant = jQuery.extend(true, {}, assistant);
+						// 		result = result.filter(r => r.id !== assistant.id);
+						// 	}
+						// }
 
 						//for support staff
 						if (!Array.isArray(bestMatch.subordinates) && Array.isArray(bestMatch.Managers) && bestMatch.Managers[0].Level === -1){
@@ -1002,12 +1062,22 @@ function NITOrgChart(options) {
 								locationMappings[lid].EndPos = staffInLoc[staffInLoc.length-1].pos;
 							});
 
-							if (typeof bestMatch.Assistant !== 'undefined') {
-								var assistant = bestMatch.Assistant;
-								assistant.Level = bestMatch.Level;
-								assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
-								result.push(assistant);
-							}
+							// if (typeof bestMatch.Assistant !== 'undefined') {
+							// 	var assistant = bestMatch.Assistant;
+							// 	assistant.Level = bestMatch.Level;
+							// 	assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
+							// 	result.push(assistant);
+							// }
+							var assistants = [];
+							result.forEach(r => {
+								if (typeof r.Assistant !== 'undefined') {
+									var assistant = r.Assistant;
+									assistant.Level = r.Level;
+									assistant.pos = (r.pos / 1.25 + 1) * 1.25;
+									assistants.push(assistant);
+								}
+							});
+							result = result.concat(assistants);
 
 							//TODO someting to detect if there are no leaf nodes in the location of root node
 							// why location separation did not kick in for bronte
@@ -1222,7 +1292,12 @@ function NITOrgChart(options) {
 			}
 		}
 
-		renderChart(allStaff, locationMappings, bmsResult.treePositioned);
+		if (allStaff.length) {
+			renderChart(allStaff, locationMappings, bmsResult.treePositioned);
+			return true;			
+		} else {
+			return false;
+		}
 	}
 	self.initialiseChart = initialiseChart;
 
