@@ -140,7 +140,7 @@ var MEGAMENU = function(options) {
 	function render_TopItem(item) {
 		var $frag = $('<li class="menu-top"></li>');
 		var url = 'javascript:void(0);';
-		if (item.mm_url !== null) {
+		if (item.mm_url !== null && (typeof (item.Children) === 'undefined' || item.Children.length < 1)) {
 		    url = item.mm_url.Url;
 		}
 		$frag.append('<a href="' + url + '">' + item.Title + '</a>');
@@ -185,7 +185,10 @@ var MEGAMENU = function(options) {
 	function bindEvents() {
 		self.target.on('click', '.menu-top.has-child', function(e) {
 			var $targetParent = $(e.target.parentElement);			
-			if ($targetParent.hasClass('menu-top') && !$targetParent.siblings().hasClass('is-locked')) {
+			if ($targetParent.hasClass('menu-top')) {
+				if ($targetParent.siblings().hasClass('is-locked')) {
+					$targetParent.siblings().removeClass('is-locked');
+				}
 				var $this = $(this);
 				$this.toggleClass('is-locked');	
 			}
