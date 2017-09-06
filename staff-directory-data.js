@@ -163,8 +163,10 @@ var STAFFDIRECTORYDATA = (function() {
             if (email !== null) {
                 var sm = managersData.filter(m => m['ocm_staffmember']['EMail'] === item.Email);
                 var sManagers = [];
-                sm.forEach( smItem => { 
-                    var manager = adData.find(m => smItem['ocm_manager']['EMail'] === m.Email);
+                sm.forEach( smItem => {
+                    // second condition implements deduplication logic
+                    var sManagersId = sManagers.map(sms => sms.id);
+                    var manager = adData.find(m => smItem['ocm_manager']['EMail'] === m.Email && sManagersId.indexOf(m.id) < 0);
                     if (manager) {
                         sManagers.push(manager);
                     }
