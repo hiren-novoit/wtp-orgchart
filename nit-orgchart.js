@@ -434,7 +434,7 @@ function NITOrgChart(options) {
 	}
 
 	function DrawManagerLines(draw, staff, locationMappings) {
-		var rootNode = staff.find(s => s.rootNode);
+		// var rootNode = staff.find(s => s.rootNode);
 
 		// Draw lines from manager;
 		staff.forEach (rootNode => {
@@ -446,50 +446,85 @@ function NITOrgChart(options) {
 			var yMod = 40;
 			var photoHeight = 35;
 			var assistMod = 0;
+			var additionalManagerOffset = {x: 0, y: 10};
 			var group = draw.group();
 			if (Array.isArray(rootNode.subordinates)) {
 				var leftMostSub = rootNode.subordinates[0];
 				var rightMostSub = rootNode.subordinates[rootNode.subordinates.length-1];
 				assistMod = typeof rootNode.Assistant === 'undefined'? 0 : config.assistantOffset.y;
-				var horizontal = {
-					start: {
-						x: leftMostSub.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
-					},
-					end: {
-						x: rightMostSub.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
+				//cond Added for multiple managers scenario - start
+				if (leftMostSub && rightMostSub) {
+					var horizontal = {
+						start: {
+							x: leftMostSub.Card.x + xMod + cardWidth/2,
+							y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
+						},
+						end: {
+							x: rightMostSub.Card.x + xMod + cardWidth/2,
+							y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
+						}
+					};
+					group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+					var vertical = {
+						start: {
+							x: rootNode.Card.x + xMod + cardWidth/2,
+							y: rootNode.Card.y + yMod + cardHeight
+						},
+						end: {
+							x: rootNode.Card.x + xMod + cardWidth/2,
+							y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
+						}
 					}
-				};
-				var vertical = {
-					start: {
-						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight
-					},
-					end: {
-						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
-					}
+					group.line(vertical.start.x, vertical.start.y, vertical.end.x, vertical.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });	
 				}
-				group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-				group.line(vertical.start.x, vertical.start.y, vertical.end.x, vertical.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });	
+				//cond Added for multiple managers scenario - end
 			}
 			if (Array.isArray(rootNode.Managers)) {
-				var manager = rootNode.Managers[0];
-				assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
-				var verticalSub = {
-					start: {
-						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: manager.Card.y + yMod + cardHeight + midY + assistMod -1
-					},
-					end: {
-						x: rootNode.Card.x + xMod + cardWidth/2,
-						y: rootNode.Card.y + yMod - photoHeight
+				rootNode.Managers.forEach((manager, i) => {
+					assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
+					if (i === 0) {
+						var manager = rootNode.Managers[0];
+						var verticalSub = {
+							start: {
+								x: rootNode.Card.x + xMod + cardWidth/2,
+								y: manager.Card.y + yMod + cardHeight + midY + assistMod -1
+							},
+							end: {
+								x: rootNode.Card.x + xMod + cardWidth/2,
+								y: rootNode.Card.y + yMod - photoHeight
+							}
+						};
+						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 					}
-				};
-				group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });	
-			}
+					 else {
+						if (i === rootNode.Managers.length-1) {
+							var horizontalSub = {
+								start: {
+									x: rootNode.Card.x + xMod + cardWidth/2,
+									y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
+								},
+								end: {
+									x: manager.Card.x + xMod + cardWidth/2,
+									y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
+								}
+							};
+							group.line(horizontalSub.start.x, horizontalSub.start.y, horizontalSub.end.x, horizontalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });
+						}
 
+						var verticalSub  = {
+							start: {
+								x: manager.Card.x + xMod + cardWidth/2,
+								y: manager.Card.y + yMod + cardHeight
+							},
+							end: {
+								x: manager.Card.x + xMod + cardWidth/2,
+								y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
+							}
+						};
+						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });
+					}
+				});
+			}
 		})
 	}
 
@@ -994,98 +1029,130 @@ function NITOrgChart(options) {
 						result.forEach(s => s.subordinates = undefined);
 						buildReportingTree(result);
 
-						var withMultipleMs = result.find(s => {return Array.isArray(s.Managers)  && s.Managers.length > 1});
-
-						if (withMultipleMs) {					
+						var withMultipleMs = result.filter(s => {return Array.isArray(s.Managers)  && s.Managers.length > 1});
+						// var withMultipleMs;
+						if (withMultipleMs.length) {					
 							// this case is not handled yet
 							console.log('Multiple managers detected in tree of', bestMatch.Name);
-							result = [bestMatch];
+							// result = [bestMatch];							
 						} else {
-							var normalisationTree = [];
-							normaliseLevels(normalisationTree, 0, bestMatch);
-							result = result.filter(r => typeof r.normalisedLevel !== 'undefined');
-							transformLevel(result, 'normalisedLevel');
-							AssignLocationIds(result, locationMappings);
-							result.sort((a, b) => {var p = {"normalisedLevel": 1}; return sortBy(a, b, p);});
-							result[0].rootNode = true;
-							treePositioned = TreePositioningAlgo(result[0]);
+						} // move
 
-							lmap = { };
-							result.forEach(s => {
-								if (typeof lmap[s.Level] === 'undefined') {
-									lmap[s.Level] = [];
-								}
-								lmap[s.Level].push(s.normalisedLevel);
-							});
-	
-							for(var key in lmap) {
-								lmap[key].sort((a, b) => b-a);
-							}
+						// copied code - start
+						var normalisationTree = [];
+						normaliseLevels(normalisationTree, 0, bestMatch);
+						result = result.filter(r => typeof r.normalisedLevel !== 'undefined');
+						transformLevel(result, 'normalisedLevel');
+						AssignLocationIds(result, locationMappings);
+						result.sort((a, b) => {var p = {"normalisedLevel": 1}; return sortBy(a, b, p);});
 
-							result.sort((a, b) => {
-								var sortPropOrder = {
-									"Level": -1,
-									"normalisedLevel": 1
-								};
-								return sortBy(a, b, sortPropOrder)
-							});
-							
-							var cStaff;
-							var pStaff;
-							var levelShift = 0;
-							for(var i=0; i < result.length; i++) {
-								cStaff = result[i];
-								if (i > 0) {
-									pStaff = result[i-1];
-									if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
-										levelShift--;
-									}
-									if(pStaff.Level-cStaff.Level > 1) {
-										levelShift += (pStaff.Level-cStaff.Level-1);
-									}
-								}
-								cStaff.levelShift = levelShift;
-							}
-							result.forEach(r => r.Level += r.levelShift);
-							transformLevel(result, 'Level', true, 0);
-							transformLevel(result, 'pos', false, 0);
-
-							var inResultLocations = _.uniq(result.map(r => r.locationId));
-							inResultLocations.forEach(lid => {
-								var staffInLoc = result.filter(r => r.locationId === lid).sort((a, b) => {
+						// not part of copied code - start
+						if (withMultipleMs.length) {
+							withMultipleMs.forEach(wmms => {
+								wmms.Managers.sort((a, b) => {
 									var sortPropOrder = {
-										"pos": 1	
+										"locationId": 1,
+										"Level": -1,
+										"roleOrder": 1,
+										"Name": 1
 									};
 									return sortBy(a, b, sortPropOrder);
 								});
-								locationMappings[lid].StartPos = staffInLoc[0].pos;
-								locationMappings[lid].EndPos = staffInLoc[staffInLoc.length-1].pos;
-							});
-
-							// if (typeof bestMatch.Assistant !== 'undefined') {
-							// 	var assistant = bestMatch.Assistant;
-							// 	assistant.Level = bestMatch.Level;
-							// 	assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
-							// 	result.push(assistant);
-							// }
-							var assistants = [];
-							result.forEach(r => {
-								if (typeof r.Assistant !== 'undefined') {
-									var assistant = r.Assistant;
-									assistant.Level = r.Level;
-									assistant.pos = (r.pos / 1.25 + 1) * 1.25;
-									assistants.push(assistant);
-								}
-							});
-							result = result.concat(assistants);
-
-							//TODO someting to detect if there are no leaf nodes in the location of root node
-							// why location separation did not kick in for bronte
-							result.forEach(r => {
-								r.SubLevel = 0;
-								r.SubLevelOffset = 0;
+								wmms.Managers.forEach((m, i) => {
+									if (i > 0) {
+										m.subordinates = m.subordinates.filter(sb => sb.id !== wmms.id);
+									}
+								});
 							});
 						}
+						// not part of copied code - end
+						var multipleAtLevel0 = result.filter(r => r.normalisedLevel === 0);
+						var level0;
+						if (multipleAtLevel0.length > 1) {
+							level0 = {isLeafNode: false, left: null, normalisedLevel: -1, subordinates: multipleAtLevel0 };
+						} else {
+							level0 = result[0];
+						}
+
+						// result[0].rootNode = true;
+						treePositioned = TreePositioningAlgo(level0);
+
+						lmap = { };
+						result.forEach(s => {
+							if (typeof lmap[s.Level] === 'undefined') {
+								lmap[s.Level] = [];
+							}
+							lmap[s.Level].push(s.normalisedLevel);
+						});
+
+						for(var key in lmap) {
+							lmap[key].sort((a, b) => b-a);
+						}
+
+						result.sort((a, b) => {
+							var sortPropOrder = {
+								"Level": -1,
+								"normalisedLevel": 1
+							};
+							return sortBy(a, b, sortPropOrder)
+						});
+						
+						var cStaff;
+						var pStaff;
+						var levelShift = 0;
+						for(var i=0; i < result.length; i++) {
+							cStaff = result[i];
+							if (i > 0) {
+								pStaff = result[i-1];
+								if (pStaff.Level === cStaff.Level && pStaff.normalisedLevel < cStaff.normalisedLevel) {
+									levelShift--;
+								}
+								if(pStaff.Level-cStaff.Level > 1) {
+									levelShift += (pStaff.Level-cStaff.Level-1);
+								}
+							}
+							cStaff.levelShift = levelShift;
+						}
+						result.forEach(r => r.Level += r.levelShift);
+						transformLevel(result, 'Level', true, 0);
+						transformLevel(result, 'pos', false, 0);
+
+						var inResultLocations = _.uniq(result.map(r => r.locationId));
+						inResultLocations.forEach(lid => {
+							var staffInLoc = result.filter(r => r.locationId === lid).sort((a, b) => {
+								var sortPropOrder = {
+									"pos": 1	
+								};
+								return sortBy(a, b, sortPropOrder);
+							});
+							locationMappings[lid].StartPos = staffInLoc[0].pos;
+							locationMappings[lid].EndPos = staffInLoc[staffInLoc.length-1].pos;
+						});
+
+						// if (typeof bestMatch.Assistant !== 'undefined') {
+						// 	var assistant = bestMatch.Assistant;
+						// 	assistant.Level = bestMatch.Level;
+						// 	assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
+						// 	result.push(assistant);
+						// }
+						var assistants = [];
+						result.forEach(r => {
+							if (typeof r.Assistant !== 'undefined') {
+								var assistant = r.Assistant;
+								assistant.Level = r.Level;
+								assistant.pos = (r.pos / 1.25 + 1) * 1.25;
+								assistants.push(assistant);
+							}
+						});
+						result = result.concat(assistants);
+
+						//TODO someting to detect if there are no leaf nodes in the location of root node
+						// why location separation did not kick in for bronte
+						result.forEach(r => {
+							r.SubLevel = 0;
+							r.SubLevelOffset = 0;
+						});
+						// copied code - end
 					}
 				}
 
