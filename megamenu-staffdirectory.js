@@ -141,8 +141,6 @@ var MMStaffDirectory = function(options) {
 
         $frag.find('.people-results').append($resultsFrag);
 
-        
-
         //var t1 = performance.now();
         $(self.target).html($frag[0].outerHTML);
 
@@ -165,11 +163,13 @@ var MMStaffDirectory = function(options) {
 
         // Create result boxes
         var $peopleResultsFrag = $('<div />')
+        initialiseFuse(); // HG
         parsedDataCache.forEach(function (p, idx) {
             $peopleResultsFrag.append(buildItem(p, idx));
         });
 
         $(self.target).find('.people-results-slider').html($peopleResultsFrag.children());
+        AttachBestMatchFilter(); // HG
 
         //var t2 = performance.now();
 
@@ -192,24 +192,40 @@ var MMStaffDirectory = function(options) {
         if (!isIE() && self.lazyLoader !== null) {
             self.lazyLoader.update();
         }
-
-        //var t4 = performance.now();
-
-        //console.log('Creating fragment: ' + (t1 - t0) + ' ms');
-        //console.log('Adding to DOM: ' + (t2 - t0) + ' ms');
-        //console.log('jQuery scrollbar: ' + (t3 - t0) + ' ms');
-        //console.log('Select2: ' + (t4 - t0) + ' ms');
-
     }
 
-    function buildItem(p, idx) {
+    function OnCardClick(e) {
+        var $card = $(e.currentTarget);
+        $('.best-match').removeClass('best-match');
+        $card.addClass('best-match');
+        var cardId = +$card.attr('data-card-id');
+        console.log(cardId);
+        if(cardId) {
+            onFilter({options: {
+                bestMatchSearch: true,
+                showDirectReportsOnly: false,
+                bestMatch: {id: cardId},
+                adminSearch: false
+            }, results: parsedDataCache});    
+        }
+    }
+
+    function AttachBestMatchFilter() {
+        $('.people-result.carousel-cell').on('click', OnCardClick);
+    }
+
+    function buildItem(p, idx, isFromBms) {
         if (typeof(p.item) !== 'undefined') { p = p.item; }
 
         var html = [];
 
         // '<div class="thumb" data-src="' + p.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId + '" style="background-image: url(\'' + p.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId + '\')"></div>' +
-
-        html.push('<div class="people-result carousel-cell">');
+        var itemId =  p.adItem.id ? p.adItem.id : 0;
+        var bestMatchClass = '';
+        if(typeof isFromBms !== undefined && isFromBms === true && typeof idx !== undefined && idx === 0) {
+            bestMatchClass = ' best-match';
+        }
+        html.push('<div class="people-result carousel-cell'+ bestMatchClass +'" data-card-id="'+ itemId +'">');
         if (self.lazyLoader == null || isIE() || p.photoItem.EncodedAbsUrl.indexOf('/profile-placeholder.png') > -1) {
             html.push('<div class="thumb" data-src="' + p.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId + '" style="background-image: url(\'' + p.photoItem.EncodedAbsUrl + '?RenditionID=' + config.renditionId + '\')"></div>');
         }
@@ -300,7 +316,7 @@ var MMStaffDirectory = function(options) {
                 }
 
                 bestMatches.forEach(function (r, idx) {
-                    $best.append(buildItem(r, idx));
+                    $best.append(buildItem(r, idx, true));
                 });
 
                 $frag.append($best);
@@ -324,7 +340,7 @@ var MMStaffDirectory = function(options) {
             })
 
             $('.people-results-slider').html(html);
-
+            AttachBestMatchFilter();
             if (!isIE() && self.lazyLoader !== null) { self.lazyLoader.update(); }
         });
     }
@@ -336,6 +352,7 @@ var MMStaffDirectory = function(options) {
             $resultsFrag.append(buildItem(p, idx));
         });
         $('.people-results-slider').html($resultsFrag.children());
+        AttachBestMatchFilter();
         if (!isIE() && self.lazyLoader !== null) { self.lazyLoader.update(); }
     }
 
@@ -441,10 +458,10 @@ var MMStaffDirectory = function(options) {
             }
             if (options.bestMatchSearch) {
                 if (prevBestMatch && options && options.bestMatch && prevBestMatch.id !== options.bestMatch.id){
-                    onFilter({options: options, results: fuse.list});
+                    onFilter({options: options, results: parsedDataCache});
                 }
             } else {
-                onFilter({options: options, results: fuse.list});
+                onFilter({options: options, results: parsedDataCache});
             }
             prevBestMatch = options.bestMatch;
             prevSearchString = val;

@@ -2771,3 +2771,6 @@ select[multiple="multiple"] {
     height: 200px!important;
 }
 
+.best-match {
+	border: 2px solid black;
+}
