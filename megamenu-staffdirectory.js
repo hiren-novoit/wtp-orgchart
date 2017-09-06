@@ -415,7 +415,7 @@ var MMStaffDirectory = function(options) {
     var prevBestMatch = {id: -1};
     function keywordSearch(filterData) {
         var trigerredByKeywordSearch = !!filterData.currentTarget;
-        var adminSearch = !trigerredByKeywordSearch &&  filterData.Function && filterData.Function.length;
+        var adminSearch = !trigerredByKeywordSearch &&  filterData.Function && filterData.Function === 'administration';
         var val = $('.search-input').val().trim();
         var options = {
             bestMatchSearch: false,
@@ -461,7 +461,7 @@ var MMStaffDirectory = function(options) {
                     onFilter({options: options, results: parsedDataCache});
                 }
             } else {
-                onFilter({options: options, results: parsedDataCache});
+                onFilter({options: options, results: fuse.list});
             }
             prevBestMatch = options.bestMatch;
             prevSearchString = val;
