@@ -31,7 +31,7 @@
 	<SharePoint:SoapDiscoveryLink runat="server" />
 	<SharePoint:CssRegistration Name="Themable/corev15.css" runat="server" />
 
-    <link href="<% $SPUrl:~sitecollection/style library/NIT.Intranet/css/intranet.css?v=20170818.1 %>" rel="stylesheet" />
+    <link href="<% $SPUrl:~sitecollection/style library/NIT.Intranet/css/intranet.css?v=20170907.1 %>" rel="stylesheet" />
 
     <SharePoint:ScriptLink ID="ScriptLink13"  Name="~SiteCollection/style library/nit.intranet/js/promise.min.js" runat="server" />
     <SharePoint:ScriptLink ID="ScriptLink6"  Name="~SiteCollection/style library/nit.intranet/js/locache.min.js" runat="server" />
@@ -39,13 +39,13 @@
     <SharePoint:ScriptLink ID="ScriptLink1"  Name="~SiteCollection/style library/nit.intranet/js/jquery-2.2.4.min.js" runat="server" />
 	<SharePoint:ScriptLink ID="ScriptLink12"  Name="~SiteCollection/style library/nit.intranet/js/imagesloaded.pkgd.min.js" runat="server" />
     <SharePoint:ScriptLink ID="ScriptLink2"  Name="~SiteCollection/style library/nit.intranet/js/layout.js?v=20170619" runat="server" />
-	<SharePoint:ScriptLink ID="ScriptLink9"  Name="~SiteCollection/style library/nit.intranet/js/staff-directory-data.js?v=20170818.1" runat="server" />
-    <SharePoint:ScriptLink ID="ScriptLink4"  Name="~SiteCollection/style library/nit.intranet/js/megamenu.js?v=20170803.1" runat="server" />
+	<SharePoint:ScriptLink ID="ScriptLink9"  Name="~SiteCollection/style library/nit.intranet/js/staff-directory-data.js?v=201700907.1" runat="server" />
+    <SharePoint:ScriptLink ID="ScriptLink4"  Name="~SiteCollection/style library/nit.intranet/js/megamenu.js?v=20170907.1" runat="server" />
 	<SharePoint:ScriptLink ID="ScriptLink7"  Name="~SiteCollection/style library/nit.intranet/js/fuse.min.js?v=20170619" runat="server" />
     <SharePoint:ScriptLink ID="ScriptLink11" Name="~SiteCollection/style library/nit.intranet/js/jquery-mousewheel.js?v=20170619" runat="server" />
     <SharePoint:ScriptLink ID="ScriptLink10" Name="~SiteCollection/style library/nit.intranet/js/jquery.scrollbar.min.js?v=20170619" runat="server" />
-	<SharePoint:ScriptLink ID="ScriptLink8"  Name="~SiteCollection/style library/nit.intranet/js/megamenu-staffdirectory.js?v=20170825.1" runat="server" />
-    <SharePoint:ScriptLink ID="ScriptLink14"  Name="~SiteCollection/style library/nit.intranet/js/megamenu-orgchart.js?v=20170825.1" runat="server" />
+	<SharePoint:ScriptLink ID="ScriptLink8"  Name="~SiteCollection/style library/nit.intranet/js/megamenu-staffdirectory.js?v=20170907.1" runat="server" />
+    <SharePoint:ScriptLink ID="ScriptLink14"  Name="~SiteCollection/style library/nit.intranet/js/megamenu-orgchart.js?v=20170907.1" runat="server" />
     <SharePoint:ScriptLink ID="ScriptLink5"  Name="~SiteCollection/style library/nit.intranet/js/opendocumenthandler.js?v=20170619" runat="server" />
 
     <SharePoint:AjaxDelta id="DeltaPlaceHolderAdditionalPageHead" Container="false" runat="server">
@@ -632,7 +632,7 @@
 	<script type="text/javascript">
 	    // Global code goes here ?
 	    (function () {
-	        SP.SOD.registerSod('masterpage-global-js', _spPageContextInfo.siteAbsoluteUrl + "/style library/nit.intranet/js/masterpage-global.js?v=20170811.1");
+	        SP.SOD.registerSod('masterpage-global-js', _spPageContextInfo.siteAbsoluteUrl + "/style library/nit.intranet/js/masterpage-global.js?v=20170907.1");
 	        SP.SOD.loadMultiple(['masterpage-global-js'], function () {
 	            // Global code has been loaded
                 // Please only update the masterpage version numbers
