@@ -161,8 +161,17 @@ var STAFFDIRECTORYDATA = (function() {
             var email = item.Email;
 
             if (email !== null) {
-                var sm = managersData.filter(m => m['ocm_staffmember']['EMail'] === item.Email);
                 var sManagers = [];
+                if(item.Manager != -1) {
+                    var adManager = adData.find(ad => ad.Email === item.Manager);
+                    if (typeof adManager !== 'undefined') {
+                        sManagers.push(adManager);
+                        item.adManager = adManager;
+                    }
+                }
+                item.Manager = -1;
+
+                var sm = managersData.filter(m => m['ocm_staffmember']['EMail'] === item.Email);
                 sm.forEach( smItem => {
                     // second condition implements deduplication logic
                     var sManagersId = sManagers.map(sms => sms.id);
@@ -171,6 +180,7 @@ var STAFFDIRECTORYDATA = (function() {
                         sManagers.push(manager);
                     }
                 });
+
                 if (sManagers.length) {
                     item.Managers = sManagers;
                 }
