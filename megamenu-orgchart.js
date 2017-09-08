@@ -63,7 +63,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
             registerPrerequisites();
 
             // Load JS
-            SP.SOD.loadMultiple(['nitorgchart-js', 'svg-js', 'svg-pan-zoom-js'], function () {
+            SP.SOD.loadMultiple(['sp.js', 'nitorgchart-js', 'svg-js', 'svg-pan-zoom-js'], function () {
                 // console.log('MMOrgChart::loadPrerequisites took ' + (performance.now() - t0) + ' milliseconds');
                 def.resolve();
             });
@@ -142,7 +142,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 		var tools = $("<div class='org-tools'></div>");
 		$(self.$target).prepend(tools);
 		$(tools).append("<img class='org-full-screen-btn' src='" + _spPageContextInfo.siteAbsoluteUrl + "/Style%20Library/NIT.Intranet/img/fullscreen.png'/>");
-		$(tools).append("<img style='display: none;' class='org-download-btn' src='" + _spPageContextInfo.siteAbsoluteUrl + "/Style%20Library/NIT.Intranet/img/download.png' />");
+		$(tools).append("<img class='org-download-btn' src='" + _spPageContextInfo.siteAbsoluteUrl + "/Style%20Library/NIT.Intranet/img/download.png' />");
 	}
 
 	function bindEvents() {
@@ -153,8 +153,10 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 
 	function evt_downloadOrgChart_click() {
 		var m = SP.UI.ModalDialog.showWaitScreenWithNoClose("Please wait while we generate the Organisation Chart image");
-
+		
 		delayedLoadScripts.done(function() {
+			var sizes = window._svgPanZoomer.getSizes()
+			var pan = window._svgPanZoomer.getPan();
 			// Reset zoom to 1
 			window._svgPanZoomer.realzoom(1, {x:0, y:0}, true);
 			
@@ -178,8 +180,9 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 			}
 			catch (ex) {
 				m.close();
+			} finally {
+				window._svgPanZoomer.realzoom(sizes.realZoom, pan, true);
 			}
-
 		});
 	}
 
