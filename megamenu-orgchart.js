@@ -163,14 +163,17 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 			var canvasDraw = document.createElement('canvas');
 			canvasDraw.width = $("svg", self.$target)[0].getBBox().width + 20;
 			canvasDraw.height = $("svg", self.$target)[0].getBBox().height + 20;
-			
+			var canvasCtx = canvasDraw.getContext("2d");
+			canvasCtx.fillStyle = "white";
+			canvasCtx.fillRect(0, 0, canvasDraw.width, canvasDraw.height);
+
 			// Hide pan zoom controls before export
 			$("#svg-pan-zoom-controls").css("display","none");
 			var rawSvgXml = "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svgjs=\"http://svgjs.com/svgjs\">" + $("svg", self.$target)[0].innerHTML + "</svg>";
 			$("#svg-pan-zoom-controls").css("display","block");
 
 			try {
-				canvg(canvasDraw, rawSvgXml).done(function() {
+				canvg(canvasDraw, rawSvgXml, { ignoreClear: true }).done(function() {
 					window.canvasout = canvasDraw;
 					window.canvasout.toBlob(function(blob) {
 						m.close();
