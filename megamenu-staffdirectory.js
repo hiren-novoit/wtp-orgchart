@@ -163,7 +163,7 @@ var MMStaffDirectory = function(options) {
 
         // Create result boxes
         var $peopleResultsFrag = $('<div />')
-        initialiseFuse(); // HG
+        // initialiseFuse(); // HG
         parsedDataCache.forEach(function (p, idx) {
             $peopleResultsFrag.append(buildItem(p, idx));
         });
@@ -278,7 +278,8 @@ var MMStaffDirectory = function(options) {
                 { name: "search_role", weight: 0.2 },
                 { name: "search_skills", weight: 0.1 },
                 { name: "search_sectors", weight: 0.1 },
-                { name: "adItem.Name", weight: 0.5 },
+                { name: "adItem.FirstName", weight: 0.6 },
+                { name: "adItem.LastName", weight: 0.4 },
             ]
         };
 
