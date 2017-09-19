@@ -152,7 +152,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 	}
 
 	function evt_downloadOrgChart_click() {
-		var m = SP.UI.ModalDialog.showWaitScreenWithNoClose("Please wait while we generate the Organisation Chart image");
+		var m = SP.UI.ModalDialog.showWaitScreenWithNoClose("Processing...","Please wait while we generate the Organisational Chart image",150, 330);
 		
 		delayedLoadScripts.done(function() {
 			var sizes = window._svgPanZoomer.getSizes()
