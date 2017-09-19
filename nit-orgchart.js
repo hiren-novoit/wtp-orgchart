@@ -1249,9 +1249,9 @@ function NITOrgChart(options) {
 	
 				// Add assistants to managers
 				if (s.Level === -1) {
-					if (buildOptions.adminSearch) {
-						s.Level = 1;
-					}
+					// if (buildOptions.adminSearch) {
+					// 	s.Level = 1;
+					// }
 					if ((typeof buildOptions.bestMatchSearch === 'undefined' || buildOptions.bestMatchSearch === false) && Array.isArray(s.Managers)) {
 						if (Array.isArray(s.Managers)) {
 							s.Managers.forEach(mFrmA => {
@@ -1262,6 +1262,7 @@ function NITOrgChart(options) {
 							});
 						}
 					}
+					s.Level = 1;
 				}
 			});	
 			//HG: Remove below line only for UAT
