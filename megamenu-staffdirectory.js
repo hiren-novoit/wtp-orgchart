@@ -279,6 +279,7 @@ var MMStaffDirectory = function(options) {
                 { name: "search_skills", weight: 0.1 },
                 { name: "search_sectors", weight: 0.1 },
                 { name: "adItem.FirstName", weight: 0.6 },
+                { name: "adItem.Name", weight: 0.5 },
                 { name: "adItem.LastName", weight: 0.4 },
             ]
         };
