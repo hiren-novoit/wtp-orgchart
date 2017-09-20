@@ -429,6 +429,7 @@ function NITOrgChart(options) {
 		if (typeof drawManagerLines !== 'undefined' && drawManagerLines) {
 			DrawManagerLines(draw, staff, locationMappings);
 		}
+		window._rawSvgXml = draw.node.innerHTML;
 		var t1 = __getNow();
 		window.console && console.log('NITOrgChart::buildChart took ' + (t1 - t0) + ' milliseconds');
 	}

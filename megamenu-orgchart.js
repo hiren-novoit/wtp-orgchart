@@ -138,7 +138,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 
 	function addControls() {
 		// Append buttons for full screen and save
-		$(self.$target).prepend("<div class='close-full-screen'>Close Full Screen</div>");
+		$(self.$target).prepend("<div class='close-full-screen'><div style='float: left;background-color: #76b330;padding: 5px;'>Close Full Screen</div><img class='org-download-btn' src='" + _spPageContextInfo.siteAbsoluteUrl + "/Style%20Library/NIT.Intranet/img/download.png'></div>");
 		var tools = $("<div class='org-tools'></div>");
 		$(self.$target).prepend(tools);
 		$(tools).append("<img class='org-full-screen-btn' src='" + _spPageContextInfo.siteAbsoluteUrl + "/Style%20Library/NIT.Intranet/img/fullscreen.png'/>");
@@ -147,7 +147,7 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 
 	function bindEvents() {
 		self.$target.on('click', ".org-full-screen-btn", evt_fullscreenOrgChart_click);
-		self.$target.on('click', ".close-full-screen", evt_fullscreenOrgChartClose_click);
+		self.$target.on('click', ".close-full-screen>div", evt_fullscreenOrgChartClose_click);
 		self.$target.on('click', ".org-download-btn", evt_downloadOrgChart_click);
 	}
 
@@ -155,22 +155,14 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 		var m = SP.UI.ModalDialog.showWaitScreenWithNoClose("Processing...","Please wait while we generate the Organisational Chart image",150, 330);
 		
 		delayedLoadScripts.done(function() {
-			var sizes = window._svgPanZoomer.getSizes()
-			var pan = window._svgPanZoomer.getPan();
-			// Reset zoom to 1
-			window._svgPanZoomer.realzoom(1, {x:0, y:0}, true);
-			
 			var canvasDraw = document.createElement('canvas');
-			canvasDraw.width = $("svg", self.$target)[0].getBBox().width + 20;
-			canvasDraw.height = $("svg", self.$target)[0].getBBox().height + 20;
+			canvasDraw.width = $("svg", self.$target)[0].getBBox().width * 2 + 20;
+			canvasDraw.height = $("svg", self.$target)[0].getBBox().height * 2 + 20;
 			var canvasCtx = canvasDraw.getContext("2d");
 			canvasCtx.fillStyle = "white";
 			canvasCtx.fillRect(0, 0, canvasDraw.width, canvasDraw.height);
 
-			// Hide pan zoom controls before export
-			$("#svg-pan-zoom-controls").css("display","none");
-			var rawSvgXml = "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svgjs=\"http://svgjs.com/svgjs\">" + $("svg", self.$target)[0].innerHTML + "</svg>";
-			$("#svg-pan-zoom-controls").css("display","block");
+			var rawSvgXml = "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svgjs=\"http://svgjs.com/svgjs\">" + window._rawSvgXml + "</svg>";
 
 			try {
 				canvg(canvasDraw, rawSvgXml, { ignoreClear: true }).done(function() {
@@ -182,9 +174,8 @@ if (typeof (window.MMOrgChartPreReqsLoaded) === 'undefined') {
 				});
 			}
 			catch (ex) {
-				m.close();
-			} finally {
-				window._svgPanZoomer.realzoom(sizes.realZoom, pan, true);
+				console.log(ex);
+				m.close();				
 			}
 		});
 	}

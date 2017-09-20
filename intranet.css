@@ -1989,12 +1989,15 @@ transition: all 0.3s ease;
     z-index: 1000; 
 }
 
+#OrgChart.full-screen>svg {
+	margin-top: 25px;
+}
+
 #OrgChart .close-full-screen {
-    width: 160px;
+    width: 180px;
     position: absolute;
     left: 50%;
     margin-left: -50px;
-    background-color: #76b330;
     text-align: center;
     color: white;
     padding: 10px;
