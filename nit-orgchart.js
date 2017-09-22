@@ -220,6 +220,10 @@ function NITOrgChart(options) {
 		});
 	}
 
+	function IsNullOrUndefined(p) {
+		return (typeof p === 'undefined' || p === null);
+	}
+
 	function orderStaff(staff, highestLevel) {
 		var gapFillers = [];
 
@@ -673,6 +677,16 @@ function NITOrgChart(options) {
 			}
 		}
 
+		// function ManagerIsInDiffCity(staff) {
+		// 	var result = false;
+		// 	if (Array.isArray(staff.Managers)) {				
+		// 		staff.Managers.forEach(m => {
+		// 			result = result || m.Location !== staff.Location;
+		// 		});
+		// 	}
+		// 	return result;			
+		// }
+
 		function PositionTree(node) {
 			if (node) {
 				node.pos = Math.ceil(node.subordinates.length/2);
@@ -720,7 +734,14 @@ function NITOrgChart(options) {
 				var rightMost = node.subordinates[0];
 				var ltPrelim = FirstWalk(leftMost, leftTreePrelim);
 				while(rightMost.right) {
-					if (rightMost.right.Location !== rightMost.Location) {
+					if (rightMost.right.Location !== rightMost.Location && 
+						( 
+							(IsNullOrUndefined(rightMost.right.right) && IsNullOrUndefined(rightMost.right.rightNeighborAtLevel))
+						 || (!IsNullOrUndefined(rightMost.right.right) && rightMost.right.right.Location !== rightMost.Location)
+						 || (!IsNullOrUndefined(rightMost.right.rightNeighborAtLevel) && rightMost.right.rightNeighborAtLevel.Location !== rightMost.Location)
+						)
+					) {
+						leftMost = rightMost.right;
 						ltPrelim += locationSeparation;
 					}
 					rightMost = rightMost.right;
@@ -1067,8 +1088,9 @@ function NITOrgChart(options) {
 							});
 						}
 						// not part of copied code - end
-						var multipleAtLevel0 = result.filter(r => r.normalisedLevel === 0);
+						var multipleAtLevel0 = result.filter(r => !Array.isArray(r.Managers));
 						var level0;
+
 						if (multipleAtLevel0.length > 1) {
 							level0 = {isLeafNode: false, left: null, normalisedLevel: -1, subordinates: multipleAtLevel0 };
 						} else {
