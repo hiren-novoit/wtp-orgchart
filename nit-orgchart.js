@@ -637,10 +637,16 @@ function NITOrgChart(options) {
 	}
 
 	function cacheChart(buildOptions) {
-		var key = getKey(buildOptions);
-		var data = window._rawSvgXml;
-		locache.set(key, JSON.stringify(data), 300);
+		var def = $.Deferred();
+
+		setTimeout(function() { 
+			var key = getKey(buildOptions);
+			var data = $("#OrgChart svg")[0].outerHTML;
+			locache.set(key, JSON.stringify(data), 300);
+			def.resolve();
+		}, 200);
 		// self[key] = window._rawSvgXml;		
+		return def;
 	}
 
 	function initialiseChart(staffIn, buildOptions) {
@@ -655,13 +661,15 @@ function NITOrgChart(options) {
 		var managers = getManagers();
 
 		$.when(levelRoles, locationMappings, managers).then(function (levels, locations, managers) {
-			var result;
-			if (!restoreCachedChart(buildOptions)) {
+			var result = restoreCachedChart(buildOptions);
+			if (!result) {
 				var t0 = __getNow();
 				result = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
 				var t1 = __getNow();
 				var timeToBuildChart = t1-t0;
-				if(timeToBuildChart > 100) {
+				// if(timeToBuildChart > 100) {
+				// caching logic is not yet able to attach on click events and not able to render chart with image
+				if(timeToBuildChart < 0) {
 					cacheChart(buildOptions);
 				}
 			}
