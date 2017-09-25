@@ -514,7 +514,7 @@ function NITOrgChart(options) {
 			}
 			if (Array.isArray(rootNode.Managers)) {
 				if (rootNode.Managers.length > 1) {
-					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === Math.max.apply(null, rootNode.Managers.map(m => m.Level)));
+					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === Math.max.apply(null, rootNode.Managers.map(m => m.Level))); 
 					var addMAssistMod = typeof managerAtLowestLevel.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 
 					var leftNode = rootNode.Managers.find((m, i) => i !== rootNode.primaryManagerIndex);
@@ -734,16 +734,19 @@ function NITOrgChart(options) {
 
 		function PositionTree(node) {
 			if (node) {
-				node.pos = Math.ceil(node.subordinates.length/2);
 				node.ypos = node.normalisedLevel;
-				InitTree(node, true);
-
-				//Initialize the list of previous nodes at each level
-				InitPrevNodeList();
-
-				//Do the preliminary positioning with a postorder walk
-				FirstWalk(node);
-
+				if(Array.isArray(node.subordinates)) {
+					node.pos = Math.ceil(node.subordinates.length/2);
+					InitTree(node, true);
+	
+					//Initialize the list of previous nodes at each level
+					InitPrevNodeList();
+	
+					//Do the preliminary positioning with a postorder walk
+					FirstWalk(node);	
+				} else {
+					node.pos = 0;
+				}
 				return true;
 			} else {
 				return false;
@@ -1042,15 +1045,17 @@ function NITOrgChart(options) {
 				});
 				
 				// If best match is an Assistant truncate all it's subordinates
-				if (bestMatch.Level === -1) {
-					var ms = bestMatch.Managers;				
-					if (Array.isArray(ms)) {
-						bestMatch.subordinates = undefined;
-						bestMatch.Managers = undefined;
-						ms.forEach(m => {
-							m.Assistant = jQuery.extend(true, {}, bestMatch);
-						});
-						result = ms;
+				if (bestMatch.Level === -1 && !Array.isArray(bestMatch.subordinates)) {
+					// var ms = bestMatch.Managers;
+					// if (Array.isArray(ms)) {
+					// 	bestMatch.subordinates = undefined;
+					// 	bestMatch.Managers = undefined;
+					// 	ms.forEach(m => {
+					// 		m.Assistant = jQuery.extend(true, {}, bestMatch);
+					// 	});
+					// 	result = ms;
+					if (Array.isArray(bestMatch.Managers)) {
+						result = bestMatch.Managers;
 					} else {
 						result = [bestMatch];
 					}
@@ -1093,7 +1098,14 @@ function NITOrgChart(options) {
 						}
 
 						// TODO: Remove assistants till figure out multiple managers case...
-						result = result.filter(s => s.Level !== -1);
+						result = result.filter(s => s.Level !== -1 
+													|| (s.Level === -1 && Array.isArray(s.subordinates))
+												);
+						result.forEach(r => {
+							if (r.Level === -1) {
+								r.Level = 1;
+							}
+						});
 						
 						result.forEach(s => s.subordinates = undefined);
 						buildReportingTree(result);
