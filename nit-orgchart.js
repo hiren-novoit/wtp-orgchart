@@ -1259,7 +1259,22 @@ function NITOrgChart(options) {
 						transformLevel(result, 'Level', true, 0);
 						transformLevel(result, 'pos', false, 0);
 
+						var assistants = [];
+						result.forEach(r => {
+							if (typeof r.Assistant !== 'undefined') {
+								var assistant = r.Assistant;
+								assistant.Level = r.Level;
+								assistant.pos = (r.pos / 1.25 + 1) * 1.25;
+								assistants.push(assistant);
+							}
+						});
+						AssignLocationIds(assistants, locationMappings);
+						result = result.concat(assistants);
+
 						var inResultLocations = _.uniq(result.map(r => r.locationId));
+						inResultLocations.sort((a, b) => {
+							return a - b;
+						});
 						inResultLocations.forEach((lid, i) => {
 							var staffInLoc = result.filter(r => r.locationId === lid).sort((a, b) => {
 								var sortPropOrder = {
@@ -1286,19 +1301,7 @@ function NITOrgChart(options) {
 						// 	assistant.pos = (bestMatch.pos / 1.25 + 1) * 1.25;
 						// 	result.push(assistant);
 						// }
-						var assistants = [];
-						result.forEach(r => {
-							if (typeof r.Assistant !== 'undefined') {
-								var assistant = r.Assistant;
-								assistant.Level = r.Level;
-								assistant.pos = (r.pos / 1.25 + 1) * 1.25;
-								assistants.push(assistant);
-							}
-						});
-						result = result.concat(assistants);
 
-						//TODO someting to detect if there are no leaf nodes in the location of root node
-						// why location separation did not kick in for bronte
 						result.forEach(r => {
 							r.SubLevel = 0;
 							r.SubLevelOffset = 0;
