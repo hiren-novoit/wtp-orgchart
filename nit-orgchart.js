@@ -514,7 +514,8 @@ function NITOrgChart(options) {
 			}
 			if (Array.isArray(rootNode.Managers)) {
 				if (rootNode.Managers.length > 1) {
-					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === Math.max.apply(null, rootNode.Managers.map(m => m.Level))); 
+					var leastLevel = Math.max.apply(null, rootNode.Managers.map(m => m.Level));
+					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === leastLevel && typeof rm.Assistant !== 'undefined') || rootNode.Managers.find(rm => rm.Level === leastLevel);
 					var addMAssistMod = typeof managerAtLowestLevel.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 
 					var leftNode = rootNode.Managers.find((m, i) => i !== rootNode.primaryManagerIndex);
