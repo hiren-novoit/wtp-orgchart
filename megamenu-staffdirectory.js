@@ -358,7 +358,14 @@ var MMStaffDirectory = function(options) {
         if (!isIE() && self.lazyLoader !== null) { self.lazyLoader.update(); }
     }
 
-    var dropDownFilters = { };
+    var dropDownFilters = {
+        Function : "",
+        Location : "",
+        Role : "",
+        Sector : "",
+        Skill : ""
+    };
+
     // Apply dropdown filters
     function applyDropdownFilters(results) {
 
@@ -458,6 +465,7 @@ var MMStaffDirectory = function(options) {
                     options.bestMatch = {id: -2};
                 }
             }
+            options.dropDownFilters = dropDownFilters;
             if (options.bestMatchSearch) {
                 if (prevBestMatch && options && options.bestMatch && prevBestMatch.id !== options.bestMatch.id){
                     onFilter({options: options, results: parsedDataCache});

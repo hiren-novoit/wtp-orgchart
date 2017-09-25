@@ -454,7 +454,7 @@ function NITOrgChart(options) {
 		if (typeof drawManagerLines !== 'undefined' && drawManagerLines) {
 			DrawManagerLines(draw, staff, locationMappings);
 		}
-		window._rawSvgXml = draw.node.innerHTML;
+		window._rawSvgXml = draw.node.outerHTML;
 		var t1 = __getNow();
 		window.console && console.log('NITOrgChart::buildChart took ' + (t1 - t0) + ' milliseconds');
 	}
@@ -599,6 +599,50 @@ function NITOrgChart(options) {
 		return staff;
 	}
 
+	function getKey(buildOptions) {
+		var key = "nit-orgchart-empty";
+		var emptyDropDownFilters = {
+			Function : "",
+			Location : "",
+			Role : "",
+			Sector : "",
+			Skill : ""
+		};
+
+		if (typeof buildOptions.bestMatchSearch !== 'undefined' && buildOptions.bestMatchSearch === true) {
+			key = 'bms-' + buildOptions.bestMatch.id;
+		} else if (typeof buildOptions.dropDownFilters !== 'undefined' && !_.isEqual(emptyDropDownFilters, buildOptions.dropDownFilters)) {
+			key = JSON.stringify(buildOptions.dropDownFilters);
+		}
+
+		return key;
+	}
+
+	function restoreCachedChart(buildOptions) {
+		var t0 = __getNow();
+		var key = getKey(buildOptions);
+		var data = locache.get(key);
+		// var data = self[key];
+		if (data) {
+			console.log('Restoring: ' + key);
+			$("#OrgChart").append(JSON.parse(data));
+			// $("#OrgChart").append(data);
+			var t1 = __getNow();
+			var timeToBuildChart = t1-t0;
+			console.log('Time to restor chart: ' + timeToBuildChart);
+		return true;
+		} else {
+			return false;
+		}
+	}
+
+	function cacheChart(buildOptions) {
+		var key = getKey(buildOptions);
+		var data = window._rawSvgXml;
+		locache.set(key, JSON.stringify(data), 300);
+		// self[key] = window._rawSvgXml;		
+	}
+
 	function initialiseChart(staffIn, buildOptions) {
 		var def = $.Deferred();
 		var staff = JSON.parse(JSON.stringify(staffIn)); // Deep copy - only json data
@@ -611,7 +655,16 @@ function NITOrgChart(options) {
 		var managers = getManagers();
 
 		$.when(levelRoles, locationMappings, managers).then(function (levels, locations, managers) {
-			var result = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
+			var result;
+			if (!restoreCachedChart(buildOptions)) {
+				var t0 = __getNow();
+				result = buildChart(staff, locations.value, levels.value, managers.value, buildOptions);
+				var t1 = __getNow();
+				var timeToBuildChart = t1-t0;
+				if(timeToBuildChart > 100) {
+					cacheChart(buildOptions);
+				}
+			}
 			def.resolve(result);
 		});
 
