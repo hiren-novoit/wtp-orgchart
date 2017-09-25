@@ -181,6 +181,27 @@ function NITOrgChart(options) {
 		}
 	}
 
+	function reassignNormalisedLevels(staff) {
+		var tree = []
+		var topLevelManagers = staff.filter(s => !Array.isArray(s.Managers));
+
+		function reassignNormalisedLevelForNode(normalisedTree, level, currentNode) {
+			var alreadyTraversed = normalisedTree.find(n => n.id === currentNode.id);
+			if (typeof alreadyTraversed === 'undefined' 
+				|| (level > 0 && level > currentNode.normalisedLevel)
+			) {
+				currentNode.normalisedLevel = level;
+				normalisedTree.push(currentNode);
+				if (Array.isArray(currentNode.subordinates)) {
+					currentNode.subordinates.forEach(s => {
+						reassignNormalisedLevelForNode(normalisedTree, level + 1, s);
+					});
+				}
+			}
+		}
+		topLevelManagers.forEach(tlm => reassignNormalisedLevelForNode(tree, 0, tlm));
+	}
+
 	function getReportingHierarchy(tree, bestMatch) {
 		var reportingHierarchy = [];
 		var selfNDirectReports = [];
@@ -451,6 +472,7 @@ function NITOrgChart(options) {
 			var yMod = 40;
 			var photoHeight = 35;
 			var assistMod = 0;
+			var firstManager;
 			var additionalManagerOffset = {x: 0, y: 10};
 			var group = draw.group();
 			if (Array.isArray(rootNode.subordinates)) {
@@ -459,6 +481,12 @@ function NITOrgChart(options) {
 				assistMod = typeof rootNode.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 				//cond Added for multiple managers scenario - start
 				if (leftMostSub && rightMostSub) {
+					if (leftMostSub.pos > rootNode.pos) {
+						leftMostSub = rootNode;
+					}
+					if (rightMostSub.pos < rootNode) {
+						rightMostSub = rootNode;
+					}
 					var horizontal = {
 						start: {
 							x: leftMostSub.Card.x + xMod + cardWidth/2,
@@ -468,7 +496,7 @@ function NITOrgChart(options) {
 							x: rightMostSub.Card.x + xMod + cardWidth/2,
 							y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
 						}
-					};
+					};					
 					group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 					var vertical = {
 						start: {
@@ -485,10 +513,41 @@ function NITOrgChart(options) {
 				//cond Added for multiple managers scenario - end
 			}
 			if (Array.isArray(rootNode.Managers)) {
+				if (rootNode.Managers.length > 1) {
+					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === Math.max.apply(null, rootNode.Managers.map(m => m.Level)));
+					var addMAssistMod = typeof managerAtLowestLevel.Assistant === 'undefined'? 0 : config.assistantOffset.y;
+
+					var leftNode = rootNode.Managers.find((m, i) => i !== rootNode.primaryManagerIndex);
+					if (leftNode && rootNode.pos < leftNode.pos) {
+						leftNode = rootNode;
+					}
+					var rightNode;
+					for(var i=rootNode.Managers.length-1; i > -1; i--) {
+						if (i !== rootNode.primaryManagerIndex) {
+							rightNode = rootNode.Managers[i].pos > rootNode.pos? rootNode.Managers[i] : rootNode;
+							break;
+						}
+					}
+					
+					var horizontalSub = {
+						start: {
+							x: leftNode.Card.x + xMod + cardWidth/2,
+							y: managerAtLowestLevel.Card.y + yMod + cardHeight + midY + addMAssistMod + additionalManagerOffset.y
+						},
+						end: {
+							x: rightNode.Card.x + xMod + cardWidth/2,
+							y: managerAtLowestLevel.Card.y + yMod + cardHeight + midY + addMAssistMod + additionalManagerOffset.y
+						}
+					};
+					group.line(horizontalSub.start.x, horizontalSub.start.y, horizontalSub.end.x, horizontalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });			
+				}
+
 				rootNode.Managers.forEach((manager, i) => {
-					assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
-					if (i === 0) {
-						var manager = rootNode.Managers[0];
+					if ((typeof rootNode.primaryManagerIndex !== 'undefined' && rootNode.primaryManagerIndex === i) 
+						|| (typeof rootNode.primaryManagerIndex === 'undefined' && i === 0)
+					) {
+						//var manager = rootNode.Managers[i];
+						assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 						var verticalSub = {
 							start: {
 								x: rootNode.Card.x + xMod + cardWidth/2,
@@ -502,20 +561,6 @@ function NITOrgChart(options) {
 						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 					}
 					 else {
-						if (i === rootNode.Managers.length-1) {
-							var horizontalSub = {
-								start: {
-									x: rootNode.Card.x + xMod + cardWidth/2,
-									y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
-								},
-								end: {
-									x: manager.Card.x + xMod + cardWidth/2,
-									y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
-								}
-							};
-							group.line(horizontalSub.start.x, horizontalSub.start.y, horizontalSub.end.x, horizontalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });
-						}
-
 						var verticalSub  = {
 							start: {
 								x: manager.Card.x + xMod + cardWidth/2,
@@ -523,7 +568,7 @@ function NITOrgChart(options) {
 							},
 							end: {
 								x: manager.Card.x + xMod + cardWidth/2,
-								y: manager.Card.y + yMod + cardHeight + midY + assistMod + additionalManagerOffset.y
+								y: managerAtLowestLevel.Card.y + yMod + cardHeight + midY + addMAssistMod + additionalManagerOffset.y
 							}
 						};
 						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });
@@ -707,7 +752,9 @@ function NITOrgChart(options) {
 
 		function FirstWalk(node, leftTreePrelim) {
 			var prelim;
-			if (node.isLeafNode || node.normalisedLevel === maxDepth) {
+			if (node.isLeafNode || node.normalisedLevel === maxDepth 
+				// || (!node.isLeafNode && node.subordinates.length === 1 && node.subordinates[0].Location !== node.Location && Array.isArray(node.subordinates[0].Managers) && )
+			) {
 				if (node.left) {
 					//TODO it seems sibling sep should be 0/1
 					// There should be another way to calculate MeanNode size to reflect sub trees below
@@ -1064,7 +1111,8 @@ function NITOrgChart(options) {
 						var normalisationTree = [];
 						normaliseLevels(normalisationTree, 0, bestMatch);
 						result = result.filter(r => typeof r.normalisedLevel !== 'undefined');
-						transformLevel(result, 'normalisedLevel');
+						reassignNormalisedLevels(result);
+						// transformLevel(result, 'normalisedLevel');
 						AssignLocationIds(result, locationMappings);
 						result.sort((a, b) => {var p = {"normalisedLevel": 1}; return sortBy(a, b, p);});
 
@@ -1080,9 +1128,14 @@ function NITOrgChart(options) {
 									};
 									return sortBy(a, b, sortPropOrder);
 								});
-								wmms.Managers.forEach((m, i) => {
-									if (i > 0) {
+								var mAssigned = false;
+								wmms.Managers.forEach((m, i) => {																
+									if (mAssigned || m.Location !== wmms.Location) {
 										m.subordinates = m.subordinates.filter(sb => sb.id !== wmms.id);
+									}
+									if (!mAssigned && m.Location === wmms.Location) {
+										mAssigned = true;
+										wmms.primaryManagerIndex = i;
 									}
 								});
 							});
@@ -1141,7 +1194,7 @@ function NITOrgChart(options) {
 						transformLevel(result, 'pos', false, 0);
 
 						var inResultLocations = _.uniq(result.map(r => r.locationId));
-						inResultLocations.forEach(lid => {
+						inResultLocations.forEach((lid, i) => {
 							var staffInLoc = result.filter(r => r.locationId === lid).sort((a, b) => {
 								var sortPropOrder = {
 									"pos": 1	
@@ -1150,6 +1203,15 @@ function NITOrgChart(options) {
 							});
 							locationMappings[lid].StartPos = staffInLoc[0].pos;
 							locationMappings[lid].EndPos = staffInLoc[staffInLoc.length-1].pos;
+
+							if(i > 0) {
+								var cLoc = locationMappings[lid];
+								var pLoc = locationMappings[inResultLocations[i-1]];
+								if (cLoc.StartPos > pLoc.StartPos && cLoc.StartPos < pLoc.EndPos) {
+									delete cLoc.StartPos;
+									delete cLoc.EndPos;
+								}
+							}
 						});
 
 						// if (typeof bestMatch.Assistant !== 'undefined') {
