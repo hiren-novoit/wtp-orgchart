@@ -461,30 +461,54 @@ function NITOrgChart(options) {
 
 	function DrawManagerLines(draw, staff, locationMappings) {
 		// var rootNode = staff.find(s => s.rootNode);
+		var cardWidth = 120;
+		var cardHeight = 88;
+		var midY = 81;
+		var xMod = 20;
+		var yMod = 40;
+		var photoHeight = 35;
+		var assistMod = 0;
+		var firstManager;
+		var additionalManagerOffset = {x: 0, y: 10};
 
 		// Draw lines from manager;
 		staff.forEach (rootNode => {
 			var locMapping = locationMappings[rootNode.locationId];
-			var cardWidth = 120;
-			var cardHeight = 88;
-			var midY = 81;
-			var xMod = 20;
-			var yMod = 40;
-			var photoHeight = 35;
-			var assistMod = 0;
-			var firstManager;
-			var additionalManagerOffset = {x: 0, y: 10};
 			var group = draw.group();
+			var primaryManagerFor = staff.find(s => {
+				if (typeof s.primaryManagerId !== 'undefined' && s.primaryManagerId === rootNode.id) {
+					return true;
+				}
+				return false;
+			});
+
+			if (typeof primaryManagerFor !== 'undefined') {
+				if (Array.isArray(rootNode.subordinates) && rootNode.subordinates.filter(s => s.id === primaryManagerFor.id).length < 1) {
+					rootNode.subordinates.push(primaryManagerFor);
+					rootNode.subordinates.sort((a, b) => a.pos - b.pos)
+				} else if (rootNode.subordinates === 'undefined') {
+					rootNode.subordinates = [primaryManagerFor];
+				} 
+			}
 			if (Array.isArray(rootNode.subordinates)) {
 				var leftMostSub = rootNode.subordinates[0];
 				var rightMostSub = rootNode.subordinates[rootNode.subordinates.length-1];
 				assistMod = typeof rootNode.Assistant === 'undefined'? 0 : config.assistantOffset.y;
+				var isSecondaryManagerOnly = true;
+				rootNode.subordinates.forEach((s, i) => {
+					if ((s.adManager && s.adManager.id === rootNode.id)
+						|| s.Managers.length === 1
+						|| s.primaryManagerId === rootNode.id
+					) {
+						isSecondaryManagerOnly = false;
+					}
+				});
 				//cond Added for multiple managers scenario - start
-				if (leftMostSub && rightMostSub) {
+				if (leftMostSub && rightMostSub && !isSecondaryManagerOnly) {
 					if (leftMostSub.pos > rootNode.pos) {
 						leftMostSub = rootNode;
 					}
-					if (rightMostSub.pos < rootNode) {
+					if (rightMostSub.pos < rootNode.pos) {
 						rightMostSub = rootNode;
 					}
 					var horizontal = {
@@ -496,7 +520,7 @@ function NITOrgChart(options) {
 							x: rightMostSub.Card.x + xMod + cardWidth/2,
 							y: rootNode.Card.y + yMod + cardHeight + midY + assistMod
 						}
-					};					
+					};
 					group.line(horizontal.start.x, horizontal.start.y, horizontal.end.x, horizontal.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
 					var vertical = {
 						start: {
@@ -547,6 +571,13 @@ function NITOrgChart(options) {
 					if ((typeof rootNode.primaryManagerIndex !== 'undefined' && rootNode.primaryManagerIndex === i) 
 						|| (typeof rootNode.primaryManagerIndex === 'undefined' && i === 0)
 					) {
+						if (typeof rootNode.primaryManagerIndex !== 'undefined') {
+							if (typeof manager.subordinates === 'undefined') {
+								manager.subordinates = [rootNode];
+							} else if ((manager.subordinates.filter((s) => s.id === rootNode.id)).length < 1) {
+								manager.subordinates.push(rootNode);
+							}
+						}
 						//var manager = rootNode.Managers[i];
 						assistMod = typeof manager.Assistant === 'undefined'? 0 : config.assistantOffset.y;
 						var verticalSub = {
@@ -560,8 +591,7 @@ function NITOrgChart(options) {
 							}
 						};
 						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
-					}
-					 else {
+					} else {
 						var verticalSub  = {
 							start: {
 								x: manager.Card.x + xMod + cardWidth/2,
@@ -1209,7 +1239,15 @@ function NITOrgChart(options) {
 									}
 									if (!mAssigned && m.Location === wmms.Location) {
 										mAssigned = true;
+										if (typeof wmms.adManager === 'undefined') {
+											wmms.primaryManagerIndex = i;
+											wmms.primaryManagerId = m.id;
+										}
+									}
+									if (typeof wmms.adManager !== 'undefined' && wmms.adManager.id === m.id) {
+										// mAssigned = true;
 										wmms.primaryManagerIndex = i;
+										wmms.primaryManagerId = m.id;
 									}
 								});
 							});
