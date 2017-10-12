@@ -541,6 +541,15 @@ function NITOrgChart(options) {
 					var leastLevel = Math.max.apply(null, rootNode.Managers.map(m => m.Level));
 					var managerAtLowestLevel = rootNode.Managers.find(rm => rm.Level === leastLevel && typeof rm.Assistant !== 'undefined') || rootNode.Managers.find(rm => rm.Level === leastLevel);
 					var addMAssistMod = typeof managerAtLowestLevel.Assistant === 'undefined'? 0 : config.assistantOffset.y;
+					rootNode.Managers.sort((a, b) => a.pos - b.pos);
+					rootNode.primaryManagerIndex = 0;
+					if (rootNode.adManager) {
+						rootNode.Managers.forEach((m, i) => {
+							if (rootNode.adManager.id === m.id) {
+								rootNode.primaryManagerIndex = i;
+							}
+						});
+					}
 
 					var leftNode = rootNode.Managers.find((m, i) => i !== rootNode.primaryManagerIndex);
 					if (leftNode && rootNode.pos < leftNode.pos) {
@@ -590,7 +599,11 @@ function NITOrgChart(options) {
 								y: rootNode.Card.y + yMod - photoHeight
 							}
 						};
-						group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+						if (typeof rootNode.adManager === 'undefined' || manager.id === rootNode.adManager.id) {
+							group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg });
+						} else {
+							group.line(verticalSub.start.x, verticalSub.start.y, verticalSub.end.x, verticalSub.end.y).stroke({ width: 2 }).attr({ stroke: locMapping.ocl_bg, "stroke-dasharray":"5, 5" });
+						}
 					} else {
 						var verticalSub  = {
 							start: {
