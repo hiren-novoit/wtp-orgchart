@@ -680,11 +680,16 @@ IC.WhatsOn = (function () {
         // zero out hours, minutes, seconds, milliseconds for easy comparisons
         var _date = new Date(date.getTime());
         _date.setHours(0, 0, 0, 0);
+        var s = this;
 
         return events.filter(function (evt) {
             var evtDate = new Date(evt.EventDateWithTZ);
             evtDate.setHours(0, 0, 0, 0);
-            return evtDate.getTime() == _date.getTime();
+            var endDate = new Date(s.addServerTimezoneOffset(evt.EndDate));
+            endDate.setHours(0, 0, 0, 0);
+            return evtDate.getTime() == _date.getTime() 
+                    || (evtDate.getTime() <= _date.getTime() 
+                        && _date.getTime() <= endDate.getTime());
         });
     }
 
